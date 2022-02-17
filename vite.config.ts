@@ -6,6 +6,6 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig({
   plugins: [reactRefresh(), tsconfigPaths()],
   build: {
-    outDir: 'docs',
+    outDir: 'dist',
   },
 });
