@@ -8,7 +8,7 @@ const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL, // Production domain from env
 ].filter(Boolean);
 
-function getCorsHeaders(origin: string | null): HeadersInit {
+function getCorsHeaders(origin: string | null): Record<string, string> {
   const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : '',
