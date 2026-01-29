@@ -1,0 +1,102 @@
+.PHONY: help install dev dev-main dev-api build build-main build-api type-check test test-main test-api lint format check clean container-dev container-dev-main container-dev-api container-prod container-build
+
+# Default target
+help:
+	@echo "Available commands:"
+	@echo "  make install          - Install dependencies with Bun"
+	@echo "  make dev             - Start all dev servers"
+	@echo "  make dev-main        - Start main (frontend) dev server"
+	@echo "  make dev-api         - Start API dev server"
+	@echo "  make build           - Build all packages"
+	@echo "  make build-main      - Build main package only"
+	@echo "  make build-api       - Build API package"
+	@echo "  make type-check      - Run TypeScript type checking"
+	@echo "  make test            - Run all tests"
+	@echo "  make test-main       - Run main package tests"
+	@echo "  make test-api        - Run API package tests"
+	@echo "  make lint            - Lint code with Biome"
+	@echo "  make format          - Format code with Biome"
+	@echo "  make check           - Lint and format code with Biome"
+	@echo "  make clean           - Remove build artifacts"
+	@echo "  make container-dev      - Start all dev containers with Podman"
+	@echo "  make container-dev-main - Start main dev container"
+	@echo "  make container-dev-api  - Start API dev container"
+	@echo "  make container-prod     - Start prod containers with Podman"
+	@echo "  make container-build    - Build production container images"
+
+# Dependencies
+install:
+	bun install
+
+# Development
+dev:
+	bun run dev
+
+dev-main:
+	bun run dev:main
+
+dev-api:
+	bun run dev:api
+
+# Build
+build:
+	bun run build
+
+build-main:
+	bun run build:main
+
+build-api:
+	bun run build:api
+
+type-check:
+	bun run type-check
+
+# Tests
+test:
+	bun run test
+
+test-main:
+	bun run test:main
+
+test-api:
+	bun run test:api
+
+# Code Quality
+lint:
+	bun run lint
+
+format:
+	bun run format
+
+check:
+	bun run check
+
+# Cleanup
+clean:
+	rm -rf dist/ node_modules/ packages/*/node_modules/ .biome-cache/
+
+# Containers (Podman)
+container-dev:
+	podman-compose up main api
+
+container-dev-main:
+	podman-compose up main
+
+container-dev-api:
+	podman-compose up api
+
+container-prod:
+	podman-compose --profile production up main-prod
+
+container-build:
+	podman build -t thebudimir-main:latest --target production .
+
+# Docker alternatives (if needed)
+docker-dev:
+	docker compose up main
+
+docker-prod:
+	docker compose --profile production up main-prod
+
+docker-build:
+	docker build -t thebudimir-main:latest --target production .

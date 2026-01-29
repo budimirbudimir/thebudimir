@@ -1,0 +1,51 @@
+services:
+  main:
+    build:
+      context: .
+      target: development
+    container_name: thebudimir-main
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./packages/main/src:/app/packages/main/src
+      - ./packages/main/index.html:/app/packages/main/index.html
+      - ./packages/main/vite.config.ts:/app/packages/main/vite.config.ts
+    environment:
+      - NODE_ENV=development
+    command: bun --cwd packages/main run dev --host 0.0.0.0
+
+  main-prod:
+    build:
+      context: .
+      target: production
+    container_name: thebudimir-main-prod
+    ports:
+      - "8080:80"
+    profiles:
+      - production
+
+  api:
+    build:
+      context: ./packages/api
+      target: development
+    container_name: thebudimir-api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./packages/api/src:/app/src
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+
+  api-prod:
+    build:
+      context: ./packages/api
+      target: production
+    container_name: thebudimir-api-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    profiles:
+      - production
