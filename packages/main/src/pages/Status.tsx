@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './Status.css';
 
@@ -27,37 +27,47 @@ export default function Status() {
     },
   ]);
 
-  const checkStatus = useCallback(async (service: ServiceStatus): Promise<ServiceStatus> => {
-    try {
-      const response = await fetch(service.endpoint);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      return {
-        ...service,
-        status: 'online',
-        data,
-        lastChecked: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        ...service,
-        status: 'offline',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        lastChecked: new Date().toISOString(),
-      };
-    }
-  }, []);
-
-  const checkAllServices = useCallback(async () => {
-    const results = await Promise.all(services.map(checkStatus));
-    setServices(results);
-  }, [services, checkStatus]);
+  const checkAllServicesRef = useRef<() => Promise<void>>();
 
   useEffect(() => {
+    const checkStatus = async (service: ServiceStatus): Promise<ServiceStatus> => {
+      try {
+        const response = await fetch(service.endpoint);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        return {
+          ...service,
+          status: 'online',
+          data,
+          lastChecked: new Date().toISOString(),
+        };
+      } catch (error) {
+        return {
+          ...service,
+          status: 'offline',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          lastChecked: new Date().toISOString(),
+        };
+      }
+    };
+
+    const checkAllServices = async () => {
+      setServices(currentServices => {
+        Promise.all(currentServices.map(checkStatus)).then(setServices);
+        return currentServices;
+      });
+    };
+
+    checkAllServicesRef.current = checkAllServices;
+
     checkAllServices();
     const interval = setInterval(checkAllServices, 30000); // Check every 30s
     return () => clearInterval(interval);
-  }, [checkAllServices]);
+  }, []);
+
+  const handleRefresh = () => {
+    checkAllServicesRef.current?.();
+  };
 
   const getStatusColor = (status: ServiceStatus['status']) => {
     switch (status) {
@@ -134,7 +144,7 @@ export default function Status() {
               </div>
             </div>
 
-            <button type="button" onClick={checkAllServices} className="refresh-button">
+            <button type="button" onClick={handleRefresh} className="refresh-button">
               Refresh Status
             </button>
           </div>
