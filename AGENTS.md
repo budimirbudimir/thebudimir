@@ -94,6 +94,18 @@ bun run container:build  # Build production image
 - Biome for linting and formatting
 - Multi-stage Docker/Podman containers (dev: Bun, prod: Nginx)
 
+## Git Workflow
+### Pre-commit Hooks
+Before every commit, these checks run automatically:
+1. **Linting** - Code quality with Biome (must pass)
+2. **Tests** - All unit tests (must pass)
+3. **Commit message** - Conventional commits format (validated)
+
+### Commit Conventions
+- Use conventional commits format: `type(scope): message`
+- See commitlint configuration in `.commitlintrc.json`
+- Valid scopes: main, api, deps, ci, release
+
 ## Container Preferences
 - **Local Development**: Prefer Podman over Docker for container operations
 - Docker compatibility should be maintained for CI/CD and other environments

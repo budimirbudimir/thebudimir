@@ -93,6 +93,15 @@ make test-api
 
 See [CONTAINERS.md](./CONTAINERS.md) for detailed container usage with Podman/Docker.
 
+## Git Hooks
+
+### Pre-commit
+Before every commit, the following checks run automatically:
+1. **Linting** - Code quality checks with Biome
+2. **Tests** - All unit tests must pass
+
+If any check fails, the commit is blocked.
+
 ## Commit Conventions
 
 This project uses **[Conventional Commits](https://www.conventionalcommits.org/)** enforced by Commitlint.
