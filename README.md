@@ -5,9 +5,9 @@ A Bun-based monorepo for personal projects by Budimir Budimir. Built with Vite +
 ## Tech Stack
 
 **Frontend:**
-- **[Vite](https://vitejs.dev/)** - Lightning-fast build tool
-- **[React 18](https://reactjs.org/)** + React Router - UI library with routing
-- **[TypeScript](https://www.typescriptlang.org/)** - Type safety
+- **[Vite](https://vitejs.dev/)** 7 - Lightning-fast build tool
+- **[React](https://react.dev/)** 19 + React Router - UI library with routing
+- **[TypeScript](https://www.typescriptlang.org/)** 5.9 - Type safety
 
 **Backend:**
 - **[Bun](https://bun.sh/)** - Fast JavaScript runtime for API server

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './Status.css';
 
@@ -27,7 +27,7 @@ export default function Status() {
     },
   ]);
 
-  const checkStatus = async (service: ServiceStatus): Promise<ServiceStatus> => {
+  const checkStatus = useCallback(async (service: ServiceStatus): Promise<ServiceStatus> => {
     try {
       const response = await fetch(service.endpoint);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -46,18 +46,18 @@ export default function Status() {
         lastChecked: new Date().toISOString(),
       };
     }
-  };
+  }, []);
 
-  const checkAllServices = async () => {
+  const checkAllServices = useCallback(async () => {
     const results = await Promise.all(services.map(checkStatus));
     setServices(results);
-  };
+  }, [services, checkStatus]);
 
   useEffect(() => {
     checkAllServices();
     const interval = setInterval(checkAllServices, 30000); // Check every 30s
     return () => clearInterval(interval);
-  }, []);
+  }, [checkAllServices]);
 
   const getStatusColor = (status: ServiceStatus['status']) => {
     switch (status) {
@@ -134,7 +134,7 @@ export default function Status() {
               </div>
             </div>
 
-            <button onClick={checkAllServices} className="refresh-button">
+            <button type="button" onClick={checkAllServices} className="refresh-button">
               Refresh Status
             </button>
           </div>

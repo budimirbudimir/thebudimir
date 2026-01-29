@@ -88,9 +88,9 @@ bun run container:build  # Build production image
 - **Workspaces**: Bun workspaces configured in root package.json
 
 ### Technology Stack
-- React 18 with TypeScript
+- React 19 with TypeScript 5.9
 - Bun for package management and runtime
-- Vite 5 for build tooling
+- Vite 7 for build tooling
 - Biome for linting and formatting
 - Multi-stage Docker/Podman containers (dev: Bun, prod: Nginx)
 

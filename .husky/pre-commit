@@ -1,4 +1,7 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+echo "🔍 Running linter..."
+bun run lint
+echo "✓ Linting passed"
 
+echo "🧪 Running tests..."
 bun run test
+echo "✓ Tests passed"
