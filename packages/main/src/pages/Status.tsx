@@ -27,7 +27,7 @@ export default function Status() {
     },
   ]);
 
-  const checkAllServicesRef = useRef<() => Promise<void>>();
+  const checkAllServicesRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     const checkStatus = async (service: ServiceStatus): Promise<ServiceStatus> => {
