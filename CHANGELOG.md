@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/budimirbudimir/thebudimir/compare/v1.0.0...v1.1.0) (2026-01-30)
+
+
+### Features
+
+* add dependabot ([#15](https://github.com/budimirbudimir/thebudimir/issues/15)) ([1fc25d8](https://github.com/budimirbudimir/thebudimir/commit/1fc25d8b2b7a6ed1f07dc72c8935aae27ee9911f))
+
 # 1.0.0 (2026-01-30)
 
 
