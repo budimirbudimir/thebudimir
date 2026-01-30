@@ -1,14 +1,14 @@
 import { Mistral } from '@mistralai/mistralai';
 
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GH_MODELS_TOKEN = process.env.GH_MODELS_TOKEN;
 
-if (!GITHUB_TOKEN) {
-  console.warn('Warning: GITHUB_TOKEN not configured. AI features will be disabled.');
+if (!GH_MODELS_TOKEN) {
+  console.warn('Warning: GH_MODELS_TOKEN not configured. AI features will be disabled.');
 }
 
 // Initialize Mistral client for GitHub Models
 const client = new Mistral({
-  apiKey: GITHUB_TOKEN,
+  apiKey: GH_MODELS_TOKEN,
   serverURL: 'https://models.github.ai/inference',
 });
 
@@ -30,7 +30,7 @@ export interface ChatResponse {
 }
 
 export async function chat(request: ChatRequest): Promise<ChatResponse> {
-  if (!GITHUB_TOKEN) {
+  if (!GH_MODELS_TOKEN) {
     throw new Error('AI service not configured');
   }
 
@@ -60,5 +60,5 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
 }
 
 export function isConfigured(): boolean {
-  return !!GITHUB_TOKEN;
+  return !!GH_MODELS_TOKEN;
 }

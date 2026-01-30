@@ -38,6 +38,7 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
+      - GH_MODELS_TOKEN=${GH_MODELS_TOKEN}
 
   api-prod:
     build:
@@ -49,5 +50,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - GH_MODELS_TOKEN=${GH_MODELS_TOKEN}
+      - FRONTEND_URL=${FRONTEND_URL:-https://thebudimir.com}
     profiles:
       - production
