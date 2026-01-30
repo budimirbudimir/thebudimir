@@ -1,12 +1,23 @@
+import {
+  Badge,
+  Button,
+  Container,
+  Group,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import './Status.css';
 
 interface ApiStatus {
   status: string;
   version: string;
   timestamp: string;
   uptime: number;
+  model?: string;
 }
 
 interface ServiceStatus {
@@ -27,6 +38,13 @@ export default function Status() {
         : 'http://localhost:3000/v1/status',
       status: 'loading',
     },
+    {
+      name: 'GitHub Models (AI)',
+      endpoint: import.meta.env.PROD
+        ? 'https://api.thebudimir.com/v1/chat'
+        : 'http://localhost:3000/v1/chat',
+      status: 'loading',
+    },
   ]);
 
   const checkAllServicesRef = useRef<(() => Promise<void>) | null>(null);
@@ -34,8 +52,28 @@ export default function Status() {
   useEffect(() => {
     const checkStatus = async (service: ServiceStatus): Promise<ServiceStatus> => {
       try {
-        const response = await fetch(service.endpoint);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        // For AI endpoint, send a test message
+        const isAIEndpoint = service.endpoint.includes('/chat');
+        const response = await fetch(
+          service.endpoint,
+          isAIEndpoint
+            ? {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: 'health check' }),
+              }
+            : undefined
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          // AI service returns 503 if not configured
+          if (response.status === 503) {
+            throw new Error(errorData.error || 'Service not configured');
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+
         const data = await response.json();
         return {
           ...service,
@@ -54,7 +92,7 @@ export default function Status() {
     };
 
     const checkAllServices = async () => {
-      setServices(currentServices => {
+      setServices((currentServices) => {
         Promise.all(currentServices.map(checkStatus)).then(setServices);
         return currentServices;
       });
@@ -74,84 +112,99 @@ export default function Status() {
   const getStatusColor = (status: ServiceStatus['status']) => {
     switch (status) {
       case 'online':
-        return '#4ade80';
+        return 'green';
       case 'offline':
-        return '#f87171';
+        return 'red';
       default:
-        return '#fbbf24';
+        return 'yellow';
     }
   };
 
   return (
-    <div className="status-page">
-      <div className="status-header">
-        <h1>System Status</h1>
-        <Link to="/" className="back-link">
+    <Container size="lg" py="xl">
+      <Group justify="space-between" mb="xl">
+        <Title order={1}>System Status</Title>
+        <Button component={Link} to="/" variant="subtle">
           ← Back to Home
-        </Link>
-      </div>
+        </Button>
+      </Group>
 
-      <div className="services-grid">
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
         {services.map((service) => (
-          <div key={service.name} className="service-card">
-            <div className="service-header">
-              <h2>{service.name}</h2>
-              <div
-                className="status-indicator"
-                style={{ backgroundColor: getStatusColor(service.status) }}
-                title={service.status}
-              />
-            </div>
+          <Paper key={service.name} shadow="sm" p="lg" withBorder>
+            <Group justify="space-between" mb="md">
+              <Title order={3}>{service.name}</Title>
+              <Badge color={getStatusColor(service.status)} variant="filled">
+                {service.status.toUpperCase()}
+              </Badge>
+            </Group>
 
-            <div className="service-details">
-              <div className="detail-row">
-                <span className="label">Status:</span>
-                <span className={`value status-${service.status}`}>
-                  {service.status.toUpperCase()}
-                </span>
-              </div>
-
+            <Stack gap="sm">
               {service.data && (
                 <>
-                  <div className="detail-row">
-                    <span className="label">Version:</span>
-                    <span className="value">{service.data.version}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Uptime:</span>
-                    <span className="value">{Math.floor(service.data.uptime)}s</span>
-                  </div>
+                  {service.data.version && (
+                    <Group justify="space-between">
+                      <Text size="sm" fw={500}>
+                        Version:
+                      </Text>
+                      <Text size="sm">{service.data.version}</Text>
+                    </Group>
+                  )}
+                  {service.data.model && (
+                    <Group justify="space-between">
+                      <Text size="sm" fw={500}>
+                        Model:
+                      </Text>
+                      <Text size="sm">{service.data.model}</Text>
+                    </Group>
+                  )}
+                  {service.data.uptime !== undefined && (
+                    <Group justify="space-between">
+                      <Text size="sm" fw={500}>
+                        Uptime:
+                      </Text>
+                      <Text size="sm">{Math.floor(service.data.uptime)}s</Text>
+                    </Group>
+                  )}
                 </>
               )}
 
               {service.error && (
-                <div className="detail-row error">
-                  <span className="label">Error:</span>
-                  <span className="value">{service.error}</span>
-                </div>
+                <Paper p="sm" bg="red.0" withBorder>
+                  <Text size="sm" c="red.9" fw={500}>
+                    Error:
+                  </Text>
+                  <Text size="sm" c="red.9">
+                    {service.error}
+                  </Text>
+                </Paper>
               )}
 
               {service.lastChecked && (
-                <div className="detail-row">
-                  <span className="label">Last Checked:</span>
-                  <span className="value">
-                    {new Date(service.lastChecked).toLocaleTimeString()}
-                  </span>
-                </div>
+                <Group justify="space-between">
+                  <Text size="sm" fw={500}>
+                    Last Checked:
+                  </Text>
+                  <Text size="sm">{new Date(service.lastChecked).toLocaleTimeString()}</Text>
+                </Group>
               )}
 
-              <div className="detail-row">
-                <span className="label">Endpoint:</span>
-                <span className="value endpoint">{service.endpoint}</span>
-              </div>
-            </div>
+              <Group justify="space-between">
+                <Text size="sm" fw={500}>
+                  Endpoint:
+                </Text>
+                <Text size="xs" c="dimmed" style={{ wordBreak: 'break-all' }}>
+                  {service.endpoint}
+                </Text>
+              </Group>
+            </Stack>
 
-            <button type="button" onClick={handleRefresh} className="refresh-button">
+            <Button fullWidth mt="md" onClick={handleRefresh} variant="light">
               Refresh Status
-            </button>
-          </div>
+            </Button>
+          </Paper>
         ))}
-      </div>
-    </div>
+      </SimpleGrid>
+    </Container>
   );
 }
