@@ -6,9 +6,9 @@ WORKDIR /app
 
 # Install dependencies stage
 FROM base AS deps
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 COPY packages/main/package.json ./packages/main/
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Development stage
 FROM base AS development

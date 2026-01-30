@@ -6,14 +6,14 @@ on:
     paths:
       - 'packages/main/**'
       - 'package.json'
-      - 'bun.lockb'
+      - 'bun.lock'
       - '.github/workflows/main-ci.yml'
   pull_request:
     branches: [main, develop]
     paths:
       - 'packages/main/**'
       - 'package.json'
-      - 'bun.lockb'
+      - 'bun.lock'
       - '.github/workflows/main-ci.yml'
 
 jobs:
