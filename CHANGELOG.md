@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/budimirbudimir/thebudimir/compare/v1.5.0...v1.5.1) (2026-01-30)
+
+
+### Bug Fixes
+
+* env vars for gh models ([#28](https://github.com/budimirbudimir/thebudimir/issues/28)) ([cf24e07](https://github.com/budimirbudimir/thebudimir/commit/cf24e076291defde386367d2bdcfca2e01906ed2))
+
 # [1.5.0](https://github.com/budimirbudimir/thebudimir/compare/v1.4.0...v1.5.0) (2026-01-30)
 
 
