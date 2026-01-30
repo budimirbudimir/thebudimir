@@ -22,7 +22,9 @@ export default function Status() {
   const [services, setServices] = useState<ServiceStatus[]>([
     {
       name: 'API Server',
-      endpoint: 'http://localhost:3000/api/v1/status',
+      endpoint: import.meta.env.PROD
+        ? 'https://api.thebudimir.com/v1/status'
+        : 'http://localhost:3000/v1/status',
       status: 'loading',
     },
   ]);

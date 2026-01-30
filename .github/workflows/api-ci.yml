@@ -57,5 +57,5 @@ jobs:
           timeout 10 bun src/index.ts &
           PID=$!
           sleep 2
-          curl -f http://localhost:3000/api/v1/status || exit 1
+          curl -f http://localhost:3000/v1/status || exit 1
           kill $PID
