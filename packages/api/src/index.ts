@@ -34,7 +34,7 @@ const server = Bun.serve({
     }
 
     // Health check endpoint
-    if (url.pathname === '/api/v1/status') {
+    if (url.pathname === '/v1/status') {
       return Response.json(
         {
           status: 'healthy',
