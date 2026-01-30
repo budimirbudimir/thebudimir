@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/budimirbudimir/thebudimir/compare/v1.3.0...v1.4.0) (2026-01-30)
+
+
+### Features
+
+* reintroduce status ([#22](https://github.com/budimirbudimir/thebudimir/issues/22)) ([6f8a749](https://github.com/budimirbudimir/thebudimir/commit/6f8a749a5c3fef5ff1d8a60f7fe3c5577cbebe90))
+
 # [1.3.0](https://github.com/budimirbudimir/thebudimir/compare/v1.2.0...v1.3.0) (2026-01-30)
 
 
