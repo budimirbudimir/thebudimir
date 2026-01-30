@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 
 describe('API Server', () => {
   test('environment variables have defaults', () => {
@@ -25,7 +25,7 @@ describe('API Server', () => {
     expect(mockResponse).toHaveProperty('version');
     expect(mockResponse).toHaveProperty('timestamp');
     expect(mockResponse).toHaveProperty('uptime');
-    
+
     expect(mockResponse.status).toBe('healthy');
     expect(typeof mockResponse.version).toBe('string');
     expect(typeof mockResponse.timestamp).toBe('string');
