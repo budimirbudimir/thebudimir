@@ -51,6 +51,8 @@ jobs:
         run: bun run --filter @thebudimir/main test
 
       - name: Build
+        env:
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
         run: bun run build:main
 
       - name: Setup Pages
