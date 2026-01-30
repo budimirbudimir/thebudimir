@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/budimirbudimir/thebudimir/compare/v1.4.0...v1.5.0) (2026-01-30)
+
+
+### Features
+
+* add authentication via Clerk ([#23](https://github.com/budimirbudimir/thebudimir/issues/23)) ([38702ff](https://github.com/budimirbudimir/thebudimir/commit/38702ff794c40b990ee2488864bc13de5aeff6fc))
+
 # [1.4.0](https://github.com/budimirbudimir/thebudimir/compare/v1.3.0...v1.4.0) (2026-01-30)
 
 
