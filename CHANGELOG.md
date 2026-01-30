@@ -1,3 +1,24 @@
+# [1.4.0](https://github.com/budimirbudimir/thebudimir/compare/v1.3.0...v1.4.0) (2026-01-30)
+
+
+### Features
+
+* reintroduce status ([#22](https://github.com/budimirbudimir/thebudimir/issues/22)) ([6f8a749](https://github.com/budimirbudimir/thebudimir/commit/6f8a749a5c3fef5ff1d8a60f7fe3c5577cbebe90))
+
+# [1.3.0](https://github.com/budimirbudimir/thebudimir/compare/v1.2.0...v1.3.0) (2026-01-30)
+
+
+### Features
+
+* update api subdomain etc ([#21](https://github.com/budimirbudimir/thebudimir/issues/21)) ([97368e4](https://github.com/budimirbudimir/thebudimir/commit/97368e40f830039fe96a6a8437db1364729840b6))
+
+# [1.2.0](https://github.com/budimirbudimir/thebudimir/compare/v1.1.0...v1.2.0) (2026-01-30)
+
+
+### Features
+
+* some automation fixes ([#20](https://github.com/budimirbudimir/thebudimir/issues/20)) ([9faf8b9](https://github.com/budimirbudimir/thebudimir/commit/9faf8b9fc493ae962c81e8aa2e0eae90a1ec892f))
+
 # [1.1.0](https://github.com/budimirbudimir/thebudimir/compare/v1.0.0...v1.1.0) (2026-01-30)
 
 
