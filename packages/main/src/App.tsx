@@ -8,7 +8,7 @@ const App = () => (
     <div className="app-container">
       <nav className="nav-bar">
         <Link to="/" className="nav-link">Home</Link>
-        {/* <Link to="/status" className="nav-link">Status</Link> */}
+        <Link to="/status" className="nav-link">Status</Link>
       </nav>
       
       <Routes>
