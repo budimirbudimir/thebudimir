@@ -36,6 +36,8 @@ Server runs on `http://localhost:3000` by default.
 
 - `PORT` - Server port (default: 3000)
 - `NODE_ENV` - Environment (development/production)
+- `GH_MODELS_TOKEN` - GitHub Personal Access Token for GitHub Models API (required for AI features)
+- `FRONTEND_URL` - Frontend URL for CORS (optional, used in production)
 
 ## Build
 

@@ -5,13 +5,13 @@ describe('Mistral service', () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {
-    // Save original GITHUB_TOKEN
-    originalEnv = process.env.GITHUB_TOKEN;
+    // Save original GH_MODELS_TOKEN
+    originalEnv = process.env.GH_MODELS_TOKEN;
   });
 
   describe('isConfigured', () => {
-    test('returns true when GITHUB_TOKEN is set', () => {
-      process.env.GITHUB_TOKEN = 'test-token-123';
+    test('returns true when GH_MODELS_TOKEN is set', () => {
+      process.env.GH_MODELS_TOKEN = 'test-token-123';
       
       // Re-import to pick up new env var
       delete require.cache[require.resolve('./mistral')];
@@ -20,8 +20,8 @@ describe('Mistral service', () => {
       expect(isConfigured()).toBe(true);
     });
 
-    test('returns false when GITHUB_TOKEN is not set', () => {
-      delete process.env.GITHUB_TOKEN;
+    test('returns false when GH_MODELS_TOKEN is not set', () => {
+      delete process.env.GH_MODELS_TOKEN;
       
       // Re-import to pick up cleared env var
       delete require.cache[require.resolve('./mistral')];
@@ -30,8 +30,8 @@ describe('Mistral service', () => {
       expect(isConfigured()).toBe(false);
     });
 
-    test('returns false when GITHUB_TOKEN is empty string', () => {
-      process.env.GITHUB_TOKEN = '';
+    test('returns false when GH_MODELS_TOKEN is empty string', () => {
+      process.env.GH_MODELS_TOKEN = '';
       
       // Re-import to pick up empty env var
       delete require.cache[require.resolve('./mistral')];
@@ -40,8 +40,8 @@ describe('Mistral service', () => {
       expect(isConfigured()).toBe(false);
     });
 
-    test('returns false when GITHUB_TOKEN is undefined', () => {
-      process.env.GITHUB_TOKEN = undefined;
+    test('returns false when GH_MODELS_TOKEN is undefined', () => {
+      process.env.GH_MODELS_TOKEN = undefined;
       
       // Re-import to pick up undefined env var
       delete require.cache[require.resolve('./mistral')];
@@ -52,8 +52,8 @@ describe('Mistral service', () => {
   });
 
   describe('chat', () => {
-    test('throws error when GITHUB_TOKEN is not configured', async () => {
-      delete process.env.GITHUB_TOKEN;
+    test('throws error when GH_MODELS_TOKEN is not configured', async () => {
+      delete process.env.GH_MODELS_TOKEN;
       
       // Re-import to pick up cleared env var
       delete require.cache[require.resolve('./mistral')];
@@ -67,7 +67,7 @@ describe('Mistral service', () => {
     });
 
     test('constructs messages correctly with system prompt', async () => {
-      process.env.GITHUB_TOKEN = 'test-token';
+      process.env.GH_MODELS_TOKEN = 'test-token';
       
       // Mock the Mistral client
       const mockComplete = mock(() =>
@@ -114,7 +114,7 @@ describe('Mistral service', () => {
     });
 
     test('uses default values when optional parameters are not provided', async () => {
-      process.env.GITHUB_TOKEN = 'test-token';
+      process.env.GH_MODELS_TOKEN = 'test-token';
       
       const mockComplete = mock(() =>
         Promise.resolve({
@@ -156,7 +156,7 @@ describe('Mistral service', () => {
     });
 
     test('handles empty response content gracefully', async () => {
-      process.env.GITHUB_TOKEN = 'test-token';
+      process.env.GH_MODELS_TOKEN = 'test-token';
       
       const mockComplete = mock(() =>
         Promise.resolve({
@@ -194,7 +194,7 @@ describe('Mistral service', () => {
     });
 
     test('handles non-string content by returning empty string', async () => {
-      process.env.GITHUB_TOKEN = 'test-token';
+      process.env.GH_MODELS_TOKEN = 'test-token';
       
       const mockComplete = mock(() =>
         Promise.resolve({
