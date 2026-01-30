@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/budimirbudimir/thebudimir/compare/v1.1.0...v1.2.0) (2026-01-30)
+
+
+### Features
+
+* some automation fixes ([#20](https://github.com/budimirbudimir/thebudimir/issues/20)) ([9faf8b9](https://github.com/budimirbudimir/thebudimir/commit/9faf8b9fc493ae962c81e8aa2e0eae90a1ec892f))
+
 # [1.1.0](https://github.com/budimirbudimir/thebudimir/compare/v1.0.0...v1.1.0) (2026-01-30)
 
 
