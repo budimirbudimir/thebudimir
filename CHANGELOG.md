@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/budimirbudimir/thebudimir/compare/v1.2.0...v1.3.0) (2026-01-30)
+
+
+### Features
+
+* update api subdomain etc ([#21](https://github.com/budimirbudimir/thebudimir/issues/21)) ([97368e4](https://github.com/budimirbudimir/thebudimir/commit/97368e40f830039fe96a6a8437db1364729840b6))
+
 # [1.2.0](https://github.com/budimirbudimir/thebudimir/compare/v1.1.0...v1.2.0) (2026-01-30)
 
 
