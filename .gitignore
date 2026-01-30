@@ -4,4 +4,6 @@ dist
 dist-ssr
 docs
 *.local
+.env
+.env.local
 .biome-cache
