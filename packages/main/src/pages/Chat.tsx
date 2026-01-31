@@ -97,7 +97,6 @@ export default function Chat() {
       });
 
       const data = (await response.json()) as { response?: string; error?: string };
-
       // Check if we got an error response
       if (!response.ok) {
         // Show error as an assistant message

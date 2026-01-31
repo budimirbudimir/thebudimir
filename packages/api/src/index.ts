@@ -93,7 +93,6 @@ const server = Bun.serve({
         return Response.json(response, { headers: corsHeaders });
       } catch (error) {
         console.error('Chat error:', error);
-
         // Provide a more helpful error message
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         const userMessage = errorMessage.includes('not configured')

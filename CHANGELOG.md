@@ -13,6 +13,19 @@
 ### Documentation
 - **api:** Update README with image processing details
 - **api:** Document WebP conversion and size limits
+# [1.6.0](https://github.com/budimirbudimir/thebudimir/compare/v1.5.2...v1.6.0) (2026-01-31)
+
+
+### Features
+
+* enable llm tools and more ([#30](https://github.com/budimirbudimir/thebudimir/issues/30)) ([cf3e454](https://github.com/budimirbudimir/thebudimir/commit/cf3e454e987165c84de6e99abe0670fab5a379c3))
+
+## [1.5.2](https://github.com/budimirbudimir/thebudimir/compare/v1.5.1...v1.5.2) (2026-01-31)
+
+
+### Bug Fixes
+
+* dark mode styling ([#29](https://github.com/budimirbudimir/thebudimir/issues/29)) ([26c37d5](https://github.com/budimirbudimir/thebudimir/commit/26c37d57d4c3a210052c5fc1e856eeee7ec51684))
 
 ## [1.5.1](https://github.com/budimirbudimir/thebudimir/compare/v1.5.0...v1.5.1) (2026-01-30)
 
