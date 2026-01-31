@@ -4,7 +4,9 @@ import {
   Button,
   Checkbox,
   Container,
+  FileButton,
   Group,
+  Image,
   Loader,
   Paper,
   ScrollArea,
@@ -20,6 +22,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  imageUrl?: string;
 }
 
 export default function Chat() {
@@ -28,6 +31,8 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useWebSearch, setUseWebSearch] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const viewport = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We want to scroll when messages change
@@ -41,18 +46,39 @@ export default function Chat() {
     ? 'https://api.thebudimir.com/v1/chat'
     : 'http://localhost:3000/v1/chat';
 
+  const handleImageSelect = (file: File | null) => {
+    setSelectedImage(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+    }
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !selectedImage) || isLoading) return;
 
     const userMessage: Message = {
       role: 'user',
-      content: input.trim(),
+      content: input.trim() || 'What do you see in this image?',
       timestamp: new Date().toISOString(),
+      imageUrl: imagePreview || undefined, // Use base64 data URL directly
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    const imageDataToSend = imagePreview; // Store before clearing
+    clearImage();
     setIsLoading(true);
     setError(null);
 
@@ -64,19 +90,22 @@ export default function Chat() {
         },
         body: JSON.stringify({
           message: userMessage.content,
+          imageData: imageDataToSend, // Send base64 data URL
           systemPrompt: 'You are a helpful assistant.',
           useWebSearch,
         }),
       });
 
       const data = (await response.json()) as { response?: string; error?: string };
-      
       // Check if we got an error response
       if (!response.ok) {
         // Show error as an assistant message
         const errorMessage: Message = {
           role: 'assistant',
-          content: data.error || data.response || `Sorry, I encountered an error (HTTP ${response.status}). Please try again.`,
+          content:
+            data.error ||
+            data.response ||
+            `Sorry, I encountered an error (HTTP ${response.status}). Please try again.`,
           timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, errorMessage]);
@@ -158,6 +187,16 @@ export default function Chat() {
                       {new Date(message.timestamp).toLocaleTimeString()}
                     </Text>
                   </Group>
+                  {message.imageUrl && (
+                    <Image
+                      src={message.imageUrl}
+                      alt="Uploaded image"
+                      mb="sm"
+                      radius="sm"
+                      fit="contain"
+                      style={{ maxHeight: '300px' }}
+                    />
+                  )}
                   <Text style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
                     {message.content}
                   </Text>
@@ -203,14 +242,48 @@ export default function Chat() {
             </Group>
           )}
           <form onSubmit={handleSubmit}>
-            <Checkbox
-              label="Enable web search"
-              checked={useWebSearch}
-              onChange={(e) => setUseWebSearch(e.currentTarget.checked)}
-              disabled={isLoading}
-              mb="sm"
-              size="sm"
-            />
+            <Group gap="sm" mb="sm">
+              <Checkbox
+                label="Enable web search"
+                checked={useWebSearch}
+                onChange={(e) => setUseWebSearch(e.currentTarget.checked)}
+                disabled={isLoading}
+                size="sm"
+              />
+              <FileButton
+                onChange={handleImageSelect}
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                disabled={isLoading}
+              >
+                {(props) => (
+                  <Button {...props} size="xs" variant="light" disabled={isLoading}>
+                    📷 Attach Image
+                  </Button>
+                )}
+              </FileButton>
+              {selectedImage && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="red"
+                  onClick={clearImage}
+                  disabled={isLoading}
+                >
+                  ✕ Remove
+                </Button>
+              )}
+            </Group>
+            {imagePreview && (
+              <Paper p="xs" mb="sm" withBorder>
+                <Image
+                  src={imagePreview}
+                  alt="Preview"
+                  radius="sm"
+                  fit="contain"
+                  style={{ maxHeight: '150px' }}
+                />
+              </Paper>
+            )}
             <Group gap="sm">
               <TextInput
                 style={{ flex: 1 }}
@@ -222,7 +295,7 @@ export default function Chat() {
               />
               <Button
                 type="submit"
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || (!input.trim() && !selectedImage)}
                 size="md"
                 leftSection={isLoading ? <Loader size="xs" color="white" /> : undefined}
               >

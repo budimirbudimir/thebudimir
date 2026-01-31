@@ -1,4 +1,5 @@
 import { Mistral } from '@mistralai/mistralai';
+import sharp from 'sharp';
 import { formatSearchResults, webSearch } from './search';
 
 const GH_MODELS_TOKEN = process.env.GH_MODELS_TOKEN;
@@ -29,6 +30,7 @@ export interface ChatMessage {
 
 export interface ChatRequest {
   message: string;
+  imageData?: string; // base64 data URL
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
@@ -42,6 +44,37 @@ export interface ChatResponse {
 }
 
 // Define web search tool for function calling
+/**
+ * Convert image to PNG format if it's WebP or other potentially unsupported formats
+ */
+async function convertImageToPng(base64Data: string): Promise<string> {
+  try {
+    // Decode base64 to buffer
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    console.log('🔄 Converting WebP image to PNG for compatibility...');
+
+    // Convert to PNG using sharp
+    const pngBuffer = await sharp(buffer)
+      .png({
+        compressionLevel: 6, // Balance between speed and size
+        adaptiveFiltering: true,
+      })
+      .toBuffer();
+
+    const pngBase64 = pngBuffer.toString('base64');
+    const originalSizeMB = (base64Data.length / (1024 * 1024)).toFixed(2);
+    const newSizeMB = (pngBase64.length / (1024 * 1024)).toFixed(2);
+
+    console.log(`   ✅ Converted WebP to PNG: ${originalSizeMB}MB -> ${newSizeMB}MB`);
+
+    return pngBase64;
+  } catch (error) {
+    console.error('⚠️  Image conversion failed, using original:', error);
+    return base64Data; // Return original on error
+  }
+}
+
 const webSearchTool = {
   type: 'function' as const,
   function: {
@@ -72,7 +105,61 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
     messages.push({ role: 'system', content: request.systemPrompt });
   }
 
-  messages.push({ role: 'user', content: request.message });
+  // Handle image in user message
+  if (request.imageData) {
+    // Extract base64 data and detect format
+    const parts = request.imageData.split(',');
+    if (parts.length < 2) {
+      throw new Error('Invalid image data format. Expected data URL with base64.');
+    }
+
+    let base64Data = parts[1];
+    const formatMatch = parts[0].match(/image\/(\w+)/);
+    const imageFormat = formatMatch ? formatMatch[1] : 'unknown';
+
+    console.log(
+      `🖼️  Processing image: format=${imageFormat}, size=${(base64Data.length / (1024 * 1024)).toFixed(2)}MB`
+    );
+
+    // Validate image size
+    const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (base64Data.length > MAX_IMAGE_SIZE) {
+      const sizeMB = (base64Data.length / (1024 * 1024)).toFixed(1);
+      throw new Error(
+        `Image is too large (${sizeMB}MB base64). Please use an image smaller than 7MB.`
+      );
+    }
+
+    // Convert WebP to PNG if needed
+    if (imageFormat.toLowerCase() === 'webp') {
+      base64Data = await convertImageToPng(base64Data);
+    }
+
+    // Reconstruct data URL with potentially converted image
+    const imageDataUrl =
+      imageFormat.toLowerCase() === 'webp'
+        ? `data:image/png;base64,${base64Data}`
+        : request.imageData;
+
+    // Mistral expects images in content array format
+    messages.push({
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: request.message,
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: imageDataUrl, // base64 data URL (converted if needed)
+          },
+        },
+      ] as any,
+    } as any);
+  } else {
+    messages.push({ role: 'user', content: request.message });
+  }
 
   const toolsUsed: string[] = [];
   const maxIterations = 5; // Prevent infinite loops
@@ -93,7 +180,9 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
       });
     } catch (error) {
       console.error('API call error:', error);
-      throw new Error(`Failed to communicate with AI service: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to communicate with AI service: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
 
     const choice = response.choices?.[0];
@@ -116,9 +205,10 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
       for (const toolCall of message.toolCalls) {
         if (toolCall.function.name === 'web_search') {
           try {
-            const argsString = typeof toolCall.function.arguments === 'string' 
-              ? toolCall.function.arguments 
-              : JSON.stringify(toolCall.function.arguments);
+            const argsString =
+              typeof toolCall.function.arguments === 'string'
+                ? toolCall.function.arguments
+                : JSON.stringify(toolCall.function.arguments);
             const args = JSON.parse(argsString);
             const query = args.query;
 
