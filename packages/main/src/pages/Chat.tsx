@@ -84,7 +84,7 @@ export default function Chat() {
         // Normal successful response
         const assistantMessage: Message = {
           role: 'assistant',
-          content: data.response,
+          content: data.response || 'Sorry, I received an empty response.',
           timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMessage]);
