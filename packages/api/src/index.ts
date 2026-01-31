@@ -1,4 +1,8 @@
 import * as mistral from './services/mistral';
+import * as ollama from './services/ollama';
+
+const USE_LOCAL_MODEL = process.env.NODE_ENV !== 'production' && !process.env.USE_GH_MODELS;
+const aiService = USE_LOCAL_MODEL ? ollama : mistral;
 
 const PORT = process.env.PORT || 3000;
 const VERSION = process.env.npm_package_version || '1.0.0';
@@ -50,7 +54,7 @@ const server = Bun.serve({
 
     // Chat endpoint
     if (url.pathname === '/v1/chat' && req.method === 'POST') {
-      if (!mistral.isConfigured()) {
+      if (!aiService.isConfigured()) {
         return Response.json(
           { error: 'AI service not configured' },
           { status: 503, headers: corsHeaders }
@@ -75,7 +79,7 @@ const server = Bun.serve({
           );
         }
 
-        const response = await mistral.chat({
+        const response = await aiService.chat({
           message,
           systemPrompt,
           temperature,
@@ -114,3 +118,4 @@ const server = Bun.serve({
 
 console.log(`🚀 API server running on http://localhost:${server.port}`);
 console.log(`📍 Health check: http://localhost:${server.port}/api/v1/status`);
+console.log(`🤖 AI Service: ${USE_LOCAL_MODEL ? 'Ollama (local)' : 'GitHub Models'}`);
