@@ -1,10 +1,19 @@
 {
   "name": "@thebudimir/monorepo",
   "version": "1.0.0",
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.13",
+    "@commitlint/cli": "^20.3.1",
+    "@commitlint/config-conventional": "^20.3.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "concurrently": "^9.2.1",
+    "husky": "^9.1.7",
+    "semantic-release": "^25.0.2",
+    "typescript": "^5.9.3"
+  },
+  "license": "MIT",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
     "dev": "concurrently -n main,api -c cyan,magenta \"bun run dev:main\" \"bun run dev:api\"",
     "dev:main": "bun run --filter @thebudimir/main dev",
@@ -26,19 +35,7 @@
     "container:build": "podman build -t thebudimir-main:latest --target production .",
     "prepare": "husky"
   },
-  "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
-    "@commitlint/cli": "^20.3.1",
-    "@commitlint/config-conventional": "^20.3.1",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "concurrently": "^9.2.1",
-    "husky": "^9.1.7",
-    "semantic-release": "^25.0.2",
-    "typescript": "^5.9.3"
-  },
-  "license": "MIT",
-  "dependencies": {
-    "sharp": "^0.34.5"
-  }
+  "workspaces": [
+    "packages/*"
+  ]
 }

@@ -4,9 +4,6 @@
   "workspaces": {
     "": {
       "name": "@thebudimir/monorepo",
-      "dependencies": {
-        "sharp": "^0.34.5",
-      },
       "devDependencies": {
         "@biomejs/biome": "^2.3.13",
         "@commitlint/cli": "^20.3.1",
@@ -24,6 +21,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@mistralai/mistralai": "^1.13.0",
+        "sharp": "^0.34.5",
       },
       "devDependencies": {
         "@types/bun": "^1.0.0",

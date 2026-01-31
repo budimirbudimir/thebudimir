@@ -598,7 +598,7 @@ describe('Chat Component', () => {
         },
         body: JSON.stringify({
           message: 'Describe this image',
-          imageData: 'data:image/png;base64,' + 'a'.repeat(15 * 1024 * 1024),
+          imageData: `data:image/png;base64,${'a'.repeat(15 * 1024 * 1024)}`,
         }),
       });
 
