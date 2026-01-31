@@ -1,7 +1,7 @@
 .app-container {
   min-height: 100vh;
-  background-color: #222;
-  color: #fff;
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7));
+  color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
 }
 
 .nav-bar {
@@ -9,16 +9,19 @@
   align-items: center;
   gap: 1.5rem;
   padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: light-dark(var(--mantine-color-white), rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-3), rgba(255, 255, 255, 0.1));
 }
 
 .nav-bar .user-button-wrapper {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .nav-link {
-  color: #61dafb;
+  color: light-dark(var(--mantine-color-blue-7), #61dafb);
   text-decoration: none;
   font-weight: 500;
   transition: opacity 0.2s;
@@ -49,15 +52,15 @@
 }
 
 .Principles .Transparency {
-  color: blueviolet;
+  color: light-dark(blueviolet, #b794f6);
 }
 
 .Principles .Empathy {
-  color: greenyellow;
+  color: light-dark(#4d9e00, greenyellow);
 }
 
 .Principles .Purpose {
-  color: orange;
+  color: light-dark(#d07000, orange);
 }
 
 h1 {
@@ -78,5 +81,11 @@ a > img:hover {
 }
 
 .Icon {
+  /* Simple-icons SVGs are black by default */
   filter: invert(1);
+}
+
+/* Override for light mode */
+[data-mantine-color-scheme="light"] .Icon {
+  filter: none;
 }
