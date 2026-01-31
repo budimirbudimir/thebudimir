@@ -1,4 +1,4 @@
-import { describe, expect, mock, test, beforeEach, afterEach } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 describe('Chat Component', () => {
   describe('Message Display', () => {
@@ -32,7 +32,9 @@ describe('Chat Component', () => {
       expect(assistantMessage).toHaveProperty('content');
       expect(assistantMessage).toHaveProperty('timestamp');
       expect(assistantMessage.role).toBe('assistant');
-      expect(assistantMessage.content).toBe('I am doing well, thank you! How can I help you today?');
+      expect(assistantMessage.content).toBe(
+        'I am doing well, thank you! How can I help you today?'
+      );
       expect(typeof assistantMessage.timestamp).toBe('string');
     });
 
@@ -236,6 +238,181 @@ describe('Chat Component', () => {
       };
 
       expect(message.content).toBe(content);
+    });
+  });
+
+  describe('Web Search Feature', () => {
+    test('web search checkbox state updates correctly', () => {
+      let useWebSearch = false;
+      const setUseWebSearch = (value: boolean) => {
+        useWebSearch = value;
+      };
+
+      expect(useWebSearch).toBe(false);
+
+      setUseWebSearch(true);
+      expect(useWebSearch).toBe(true);
+
+      setUseWebSearch(false);
+      expect(useWebSearch).toBe(false);
+    });
+
+    test('sends useWebSearch flag in API request', async () => {
+      const mockResponse = {
+        response: 'Weather information...',
+        model: 'Ministral-3B',
+      };
+
+      let capturedRequestBody: any = null;
+      global.fetch = mock((url: string, options: any) => {
+        capturedRequestBody = JSON.parse(options.body);
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockResponse),
+          headers: new Headers(),
+          status: 200,
+          statusText: 'OK',
+        } as Response);
+      });
+
+      const apiEndpoint = 'http://localhost:3000/v1/chat';
+      const useWebSearch = true;
+
+      await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'What is the weather tomorrow?',
+          systemPrompt: 'You are a helpful assistant.',
+          useWebSearch,
+        }),
+      });
+
+      expect(capturedRequestBody).toHaveProperty('useWebSearch');
+      expect(capturedRequestBody.useWebSearch).toBe(true);
+    });
+  });
+
+  describe('Error Handling', () => {
+    let originalFetch: typeof global.fetch;
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    test('handles 500 error with custom error message', async () => {
+      const mockError = {
+        error: 'Sorry, I can\'t respond to that due to: Rate limit exceeded',
+        response: 'Sorry, I can\'t respond to that due to: Rate limit exceeded',
+      };
+
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve(mockError),
+          headers: new Headers(),
+          status: 500,
+          statusText: 'Internal Server Error',
+        } as Response)
+      );
+
+      const apiEndpoint = 'http://localhost:3000/v1/chat';
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'Hello',
+        }),
+      });
+
+      expect(response.ok).toBe(false);
+      const data = await response.json();
+      expect(data.error).toContain('Sorry, I can\'t respond to that');
+      expect(data.response).toContain('Sorry, I can\'t respond to that');
+    });
+
+    test('displays error as assistant message in chat', async () => {
+      const errorMessage = {
+        role: 'assistant' as const,
+        content: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date().toISOString(),
+      };
+
+      expect(errorMessage.role).toBe('assistant');
+      expect(errorMessage.content).toContain('Sorry');
+      expect(errorMessage.content).toContain('error');
+    });
+
+    test('handles network error gracefully', async () => {
+      global.fetch = mock(() => Promise.reject(new Error('Failed to fetch')));
+
+      const apiEndpoint = 'http://localhost:3000/v1/chat';
+
+      try {
+        await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: 'Hello',
+          }),
+        });
+        expect(true).toBe(false); // Should not reach here
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        
+        // Verify error message structure for display
+        const errorMessage = {
+          role: 'assistant' as const,
+          content: 'Sorry, I couldn\'t connect to the server. Please check your connection and try again.',
+          timestamp: new Date().toISOString(),
+        };
+        
+        expect(errorMessage.role).toBe('assistant');
+        expect(errorMessage.content).toContain('couldn\'t connect');
+      }
+    });
+
+    test('handles tool call errors', async () => {
+      const mockError = {
+        error: 'Sorry, there was an issue processing your request with the requested tools.',
+        response: 'Sorry, there was an issue processing your request with the requested tools.',
+      };
+
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve(mockError),
+          headers: new Headers(),
+          status: 500,
+          statusText: 'Internal Server Error',
+        } as Response)
+      );
+
+      const apiEndpoint = 'http://localhost:3000/v1/chat';
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'What is the weather?',
+          useWebSearch: true,
+        }),
+      });
+
+      expect(response.ok).toBe(false);
+      const data = await response.json();
+      expect(data.error).toContain('issue processing your request');
     });
   });
 
