@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/budimirbudimir/thebudimir/compare/v1.6.0...v1.7.0) (2026-01-31)
+
+
+### Features
+
+* extend llm tools, add image detection and analysis ([#31](https://github.com/budimirbudimir/thebudimir/issues/31)) ([9fca971](https://github.com/budimirbudimir/thebudimir/commit/9fca971392b8c1d706fc74ec5f05ae84ee0579d0))
+
 ## Unreleased
 
 ### Features
