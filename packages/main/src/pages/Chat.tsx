@@ -2,8 +2,10 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Container,
   Group,
+  Loader,
   Paper,
   ScrollArea,
   Stack,
@@ -20,16 +22,12 @@ interface Message {
   timestamp: string;
 }
 
-interface ChatResponse {
-  response: string;
-  model: string;
-}
-
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useWebSearch, setUseWebSearch] = useState(false);
   const viewport = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We want to scroll when messages change
@@ -67,25 +65,39 @@ export default function Chat() {
         body: JSON.stringify({
           message: userMessage.content,
           systemPrompt: 'You are a helpful assistant.',
+          useWebSearch,
         }),
       });
 
+      const data = (await response.json()) as { response?: string; error?: string };
+      
+      // Check if we got an error response
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        // Show error as an assistant message
+        const errorMessage: Message = {
+          role: 'assistant',
+          content: data.error || data.response || `Sorry, I encountered an error (HTTP ${response.status}). Please try again.`,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      } else {
+        // Normal successful response
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: data.response || 'Sorry, I received an empty response.',
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
       }
-
-      const data: ChatResponse = await response.json();
-
-      const assistantMessage: Message = {
+    } catch (err) {
+      // Network or parsing errors - show as assistant message
+      const errorMessage: Message = {
         role: 'assistant',
-        content: data.response,
+        content: `Sorry, I couldn't connect to the server. Please check your connection and try again.`,
         timestamp: new Date().toISOString(),
       };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send message');
+      setMessages((prev) => [...prev, errorMessage]);
+      console.error('Chat error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -191,6 +203,14 @@ export default function Chat() {
             </Group>
           )}
           <form onSubmit={handleSubmit}>
+            <Checkbox
+              label="Enable web search"
+              checked={useWebSearch}
+              onChange={(e) => setUseWebSearch(e.currentTarget.checked)}
+              disabled={isLoading}
+              mb="sm"
+              size="sm"
+            />
             <Group gap="sm">
               <TextInput
                 style={{ flex: 1 }}
@@ -200,7 +220,12 @@ export default function Chat() {
                 disabled={isLoading}
                 size="md"
               />
-              <Button type="submit" disabled={isLoading || !input.trim()} size="md">
+              <Button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                size="md"
+                leftSection={isLoading ? <Loader size="xs" color="white" /> : undefined}
+              >
                 {isLoading ? 'Sending...' : 'Send'}
               </Button>
             </Group>

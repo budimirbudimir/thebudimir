@@ -63,8 +63,10 @@ const server = Bun.serve({
           systemPrompt?: string;
           temperature?: number;
           maxTokens?: number;
+          useTools?: boolean;
+          useWebSearch?: boolean;
         };
-        const { message, systemPrompt, temperature, maxTokens } = body;
+        const { message, systemPrompt, temperature, maxTokens, useTools, useWebSearch } = body;
 
         if (!message || typeof message !== 'string') {
           return Response.json(
@@ -78,13 +80,28 @@ const server = Bun.serve({
           systemPrompt,
           temperature,
           maxTokens,
+          useTools: useWebSearch ?? useTools,
         });
 
         return Response.json(response, { headers: corsHeaders });
       } catch (error) {
         console.error('Chat error:', error);
+        
+        // Provide a more helpful error message
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        const userMessage = errorMessage.includes('not configured')
+          ? 'Sorry, the AI service is not properly configured. Please contact the administrator.'
+          : errorMessage.includes('tool call')
+          ? 'Sorry, there was an issue processing your request with the requested tools.'
+          : errorMessage.includes('No response')
+          ? 'Sorry, I was unable to generate a response. Please try again.'
+          : `Sorry, I can't respond to that due to: ${errorMessage}`;
+        
         return Response.json(
-          { error: 'Failed to process chat request' },
+          { 
+            error: userMessage,
+            response: userMessage // Also include as response for consistent handling
+          },
           { status: 500, headers: corsHeaders }
         );
       }
