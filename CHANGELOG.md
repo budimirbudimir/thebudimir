@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/budimirbudimir/thebudimir/compare/v1.5.2...v1.6.0) (2026-01-31)
+
+
+### Features
+
+* enable llm tools and more ([#30](https://github.com/budimirbudimir/thebudimir/issues/30)) ([cf3e454](https://github.com/budimirbudimir/thebudimir/commit/cf3e454e987165c84de6e99abe0670fab5a379c3))
+
 ## [1.5.2](https://github.com/budimirbudimir/thebudimir/compare/v1.5.1...v1.5.2) (2026-01-31)
 
 
