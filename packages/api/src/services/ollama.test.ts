@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 
 describe('Ollama service', () => {
   describe('isConfigured', () => {
@@ -233,13 +233,6 @@ describe('Ollama service', () => {
 
   describe('convertImageToPng', () => {
     test('successfully converts a WebP image to PNG', async () => {
-      // Mock sharp to avoid actual image processing
-      const mockSharp = mock(() => ({
-        png: mock(() => ({
-          toBuffer: mock(async () => Buffer.from('fake-png-data')),
-        })),
-      }));
-
       // Create a valid base64 string (1x1 pixel WebP image)
       const webpBase64 =
         'UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=';
