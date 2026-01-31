@@ -1,12 +1,12 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
 import type { ChatRequest, ChatResponse } from './mistral';
 
 describe('Mistral service', () => {
-  let originalEnv: string | undefined;
+  let _originalEnv: string | undefined;
 
   beforeEach(() => {
     // Save original GH_MODELS_TOKEN
-    originalEnv = process.env.GH_MODELS_TOKEN;
+    _originalEnv = process.env.GH_MODELS_TOKEN;
   });
 
   describe('isConfigured', () => {

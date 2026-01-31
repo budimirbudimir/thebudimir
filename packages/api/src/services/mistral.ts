@@ -81,7 +81,7 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
   while (iterations < maxIterations) {
     iterations++;
 
-    let response;
+    let response: Awaited<ReturnType<typeof client.chat.complete>>;
     try {
       response = await client.chat.complete({
         model: 'mistral-ai/Ministral-3B',

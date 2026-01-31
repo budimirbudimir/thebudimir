@@ -22,11 +22,6 @@ interface Message {
   timestamp: string;
 }
 
-interface ChatResponse {
-  response: string;
-  model: string;
-}
-
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -74,7 +69,7 @@ export default function Chat() {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as { response?: string; error?: string };
       
       // Check if we got an error response
       if (!response.ok) {

@@ -264,7 +264,7 @@ describe('Chat Component', () => {
       };
 
       let capturedRequestBody: any = null;
-      global.fetch = mock((url: string, options: any) => {
+      global.fetch = mock((_url: string, options: any) => {
         capturedRequestBody = JSON.parse(options.body);
         return Promise.resolve({
           ok: true,
