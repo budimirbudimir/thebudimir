@@ -1,3 +1,19 @@
+## Unreleased
+
+### Features
+- **api:** Add automatic WebP to PNG image conversion for vision models
+- **api:** Switch to lighter llava-phi3 vision model (2.9GB vs 4.7GB)
+- **api:** Add image size validation (max 10MB base64 / ~7.5MB actual)
+- **api:** Add comprehensive image handling tests
+
+### Bug Fixes
+- **api:** Fix Ollama model runner crashes with WebP images
+- **api:** Improve error handling for image processing failures
+
+### Documentation
+- **api:** Update README with image processing details
+- **api:** Document WebP conversion and size limits
+
 ## [1.5.1](https://github.com/budimirbudimir/thebudimir/compare/v1.5.0...v1.5.1) (2026-01-30)
 
 

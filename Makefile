@@ -1,4 +1,4 @@
-.PHONY: help install dev dev-main dev-api build build-main build-api type-check test test-main test-api lint format check clean container-dev container-dev-main container-dev-api container-prod container-build
+.PHONY: help install dev dev-main dev-api build build-main build-api type-check test test-main test-api lint format check clean container-dev container-dev-main container-dev-api container-prod container-build ollama-start ollama-stop ollama-restart
 
 # Default target
 help:
@@ -23,6 +23,9 @@ help:
 	@echo "  make container-dev-api  - Start API dev container"
 	@echo "  make container-prod     - Start prod containers with Podman"
 	@echo "  make container-build    - Build production container images"
+	@echo "  make ollama-start       - Start Ollama with optimized settings"
+	@echo "  make ollama-stop        - Stop Ollama server"
+	@echo "  make ollama-restart     - Restart Ollama with new settings"
 
 # Dependencies
 install:
@@ -100,3 +103,17 @@ docker-prod:
 
 docker-build:
 	docker build -t thebudimir-main:latest --target production .
+
+# Ollama Management
+ollama-start:
+	@echo "Starting Ollama with optimized settings..."
+	@./scripts/start-ollama.sh
+
+ollama-stop:
+	@echo "Stopping Ollama..."
+	@pkill -f "ollama serve" || echo "Ollama not running"
+
+ollama-restart: ollama-stop
+	@echo "Waiting for Ollama to stop..."
+	@sleep 2
+	@$(MAKE) ollama-start

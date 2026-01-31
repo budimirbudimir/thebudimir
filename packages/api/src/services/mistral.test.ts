@@ -92,13 +92,13 @@ describe('Mistral service', () => {
       // Verify request has only required field
       expect(request).toHaveProperty('message');
       expect(request.message).toBe('Hello');
-      
+
       // Verify optional fields are undefined
       expect(request.systemPrompt).toBeUndefined();
       expect(request.temperature).toBeUndefined();
       expect(request.maxTokens).toBeUndefined();
       expect(request.useTools).toBeUndefined();
-      
+
       // Verify defaults would be applied (temperature: 0.7, maxTokens: 2000)
       const temperature = request.temperature ?? 0.7;
       const maxTokens = request.maxTokens ?? 2000;
@@ -126,12 +126,12 @@ describe('Mistral service', () => {
 
       expect(responseText).toBe('');
       expect(typeof responseText).toBe('string');
-      
+
       // Test with actual string
       const stringContent = 'Hello';
       const stringResponse = typeof stringContent === 'string' ? stringContent : '';
       expect(stringResponse).toBe('Hello');
-      
+
       // Test with empty string
       const emptyContent = '';
       const emptyResponse = typeof emptyContent === 'string' ? emptyContent : '';

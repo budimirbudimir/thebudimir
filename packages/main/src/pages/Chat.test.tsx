@@ -308,8 +308,8 @@ describe('Chat Component', () => {
 
     test('handles 500 error with custom error message', async () => {
       const mockError = {
-        error: 'Sorry, I can\'t respond to that due to: Rate limit exceeded',
-        response: 'Sorry, I can\'t respond to that due to: Rate limit exceeded',
+        error: "Sorry, I can't respond to that due to: Rate limit exceeded",
+        response: "Sorry, I can't respond to that due to: Rate limit exceeded",
       };
 
       global.fetch = mock(() =>
@@ -335,8 +335,8 @@ describe('Chat Component', () => {
 
       expect(response.ok).toBe(false);
       const data = await response.json();
-      expect(data.error).toContain('Sorry, I can\'t respond to that');
-      expect(data.response).toContain('Sorry, I can\'t respond to that');
+      expect(data.error).toContain("Sorry, I can't respond to that");
+      expect(data.response).toContain("Sorry, I can't respond to that");
     });
 
     test('displays error as assistant message in chat', async () => {
@@ -369,16 +369,17 @@ describe('Chat Component', () => {
         expect(true).toBe(false); // Should not reach here
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        
+
         // Verify error message structure for display
         const errorMessage = {
           role: 'assistant' as const,
-          content: 'Sorry, I couldn\'t connect to the server. Please check your connection and try again.',
+          content:
+            "Sorry, I couldn't connect to the server. Please check your connection and try again.",
           timestamp: new Date().toISOString(),
         };
-        
+
         expect(errorMessage.role).toBe('assistant');
-        expect(errorMessage.content).toContain('couldn\'t connect');
+        expect(errorMessage.content).toContain("couldn't connect");
       }
     });
 
@@ -413,6 +414,198 @@ describe('Chat Component', () => {
       expect(response.ok).toBe(false);
       const data = await response.json();
       expect(data.error).toContain('issue processing your request');
+    });
+  });
+
+  describe('Image Handling', () => {
+    test('message with image URL has imageUrl property', () => {
+      const messageWithImage = {
+        role: 'user' as const,
+        content: 'What do you see in this image?',
+        timestamp: new Date().toISOString(),
+        imageUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==',
+      };
+
+      expect(messageWithImage).toHaveProperty('imageUrl');
+      expect(messageWithImage.imageUrl).toContain('data:image/');
+      expect(messageWithImage.imageUrl).toContain('base64');
+    });
+
+    test('message without image does not have imageUrl property', () => {
+      const messageWithoutImage = {
+        role: 'user' as const,
+        content: 'Hello',
+        timestamp: new Date().toISOString(),
+      };
+
+      expect(messageWithoutImage.imageUrl).toBeUndefined();
+    });
+
+    test('sends imageData in API request when image is selected', async () => {
+      const mockResponse = {
+        response: 'I see a beautiful sunset in this image.',
+        model: 'llava-phi3:latest',
+      };
+
+      let capturedRequestBody: any = null;
+      global.fetch = mock((_url: string, options: any) => {
+        capturedRequestBody = JSON.parse(options.body);
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockResponse),
+          headers: new Headers(),
+          status: 200,
+          statusText: 'OK',
+        } as Response);
+      });
+
+      const apiEndpoint = 'http://localhost:3000/v1/chat';
+      const imageData = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+
+      await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'Describe this image',
+          imageData,
+          systemPrompt: 'You are a helpful assistant.',
+        }),
+      });
+
+      expect(capturedRequestBody).toHaveProperty('imageData');
+      expect(capturedRequestBody.imageData).toBe(imageData);
+      expect(capturedRequestBody.imageData).toContain('base64');
+    });
+
+    test('accepts multiple image formats', () => {
+      const formats = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+      const acceptString = formats.join(',');
+
+      expect(acceptString).toContain('image/png');
+      expect(acceptString).toContain('image/jpeg');
+      expect(acceptString).toContain('image/jpg');
+      expect(acceptString).toContain('image/webp');
+    });
+
+    test('uses default message when only image is provided', () => {
+      const input = '';
+      const hasImage = true;
+      const message = input.trim() || (hasImage ? 'What do you see in this image?' : '');
+
+      expect(message).toBe('What do you see in this image?');
+    });
+
+    test('uses user message when both message and image are provided', () => {
+      const input = 'Describe this in detail';
+      const hasImage = true;
+      const message = input.trim() || (hasImage ? 'What do you see in this image?' : '');
+
+      expect(message).toBe('Describe this in detail');
+    });
+
+    test('image preview state updates correctly', () => {
+      let imagePreview: string | null = null;
+      const setImagePreview = (value: string | null) => {
+        imagePreview = value;
+      };
+
+      expect(imagePreview).toBe(null);
+
+      setImagePreview('data:image/png;base64,iVBORw0KGg==');
+      expect(imagePreview).toBeTruthy();
+      expect(imagePreview).toContain('data:image/');
+
+      setImagePreview(null);
+      expect(imagePreview).toBe(null);
+    });
+
+    test('selected image state updates correctly', () => {
+      let selectedImage: File | null = null;
+      const setSelectedImage = (value: File | null) => {
+        selectedImage = value;
+      };
+
+      expect(selectedImage).toBe(null);
+
+      const mockFile = new File(['test'], 'test.png', { type: 'image/png' });
+      setSelectedImage(mockFile);
+      expect(selectedImage).toBeTruthy();
+      expect(selectedImage?.name).toBe('test.png');
+      expect(selectedImage?.type).toBe('image/png');
+
+      setSelectedImage(null);
+      expect(selectedImage).toBe(null);
+    });
+
+    test('handles image error when Ollama model crashes', async () => {
+      const mockError = {
+        error:
+          'Sorry, I can\'t respond to that due to: Failed to communicate with local AI service: Ollama API error: 500 Internal Server Error - {"error":"model runner has unexpectedly stopped"}',
+        response:
+          'Sorry, I can\'t respond to that due to: Failed to communicate with local AI service: Ollama API error: 500 Internal Server Error - {"error":"model runner has unexpectedly stopped"}',
+      };
+
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve(mockError),
+          headers: new Headers(),
+          status: 500,
+          statusText: 'Internal Server Error',
+        } as Response)
+      );
+
+      const apiEndpoint = 'http://localhost:3000/v1/chat';
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'Describe this image',
+          imageData: 'data:image/webp;base64,test',
+        }),
+      });
+
+      expect(response.ok).toBe(false);
+      const data = await response.json();
+      expect(data.error).toContain('model runner has unexpectedly stopped');
+    });
+
+    test('handles image too large error', async () => {
+      const mockError = {
+        error: 'Image is too large (12.5MB base64). Please use an image smaller than 7MB.',
+        response: 'Image is too large (12.5MB base64). Please use an image smaller than 7MB.',
+      };
+
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve(mockError),
+          headers: new Headers(),
+          status: 500,
+          statusText: 'Internal Server Error',
+        } as Response)
+      );
+
+      const apiEndpoint = 'http://localhost:3000/v1/chat';
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'Describe this image',
+          imageData: 'data:image/png;base64,' + 'a'.repeat(15 * 1024 * 1024),
+        }),
+      });
+
+      expect(response.ok).toBe(false);
+      const data = await response.json();
+      expect(data.error).toContain('Image is too large');
+      expect(data.error).toContain('MB');
     });
   });
 

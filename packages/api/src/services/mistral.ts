@@ -29,6 +29,7 @@ export interface ChatMessage {
 
 export interface ChatRequest {
   message: string;
+  imageData?: string; // base64 data URL
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
@@ -72,7 +73,27 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
     messages.push({ role: 'system', content: request.systemPrompt });
   }
 
-  messages.push({ role: 'user', content: request.message });
+  // Handle image in user message
+  if (request.imageData) {
+    // Mistral expects images in content array format
+    messages.push({
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: request.message,
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: request.imageData, // base64 data URL
+          },
+        },
+      ] as any,
+    } as any);
+  } else {
+    messages.push({ role: 'user', content: request.message });
+  }
 
   const toolsUsed: string[] = [];
   const maxIterations = 5; // Prevent infinite loops
@@ -93,7 +114,9 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
       });
     } catch (error) {
       console.error('API call error:', error);
-      throw new Error(`Failed to communicate with AI service: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to communicate with AI service: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
 
     const choice = response.choices?.[0];
@@ -116,9 +139,10 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
       for (const toolCall of message.toolCalls) {
         if (toolCall.function.name === 'web_search') {
           try {
-            const argsString = typeof toolCall.function.arguments === 'string' 
-              ? toolCall.function.arguments 
-              : JSON.stringify(toolCall.function.arguments);
+            const argsString =
+              typeof toolCall.function.arguments === 'string'
+                ? toolCall.function.arguments
+                : JSON.stringify(toolCall.function.arguments);
             const args = JSON.parse(argsString);
             const query = args.query;
 
