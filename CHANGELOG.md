@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/budimirbudimir/thebudimir/compare/v1.8.0...v1.9.0) (2026-02-01)
+
+
+### Features
+
+* fix mistral api issue ([#36](https://github.com/budimirbudimir/thebudimir/issues/36)) ([d65094d](https://github.com/budimirbudimir/thebudimir/commit/d65094db5f00c6c10f46c663505a17a31bb60887))
+
 # [1.8.0](https://github.com/budimirbudimir/thebudimir/compare/v1.7.0...v1.8.0) (2026-02-01)
 
 
