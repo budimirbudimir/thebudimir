@@ -189,8 +189,8 @@ describe('/v1/chat endpoint', () => {
 describe('Error Handling', () => {
   test('error response includes both error and response fields', () => {
     const errorResponse = {
-      error: 'Sorry, I can\'t respond to that due to: Test error',
-      response: 'Sorry, I can\'t respond to that due to: Test error',
+      error: "Sorry, I can't respond to that due to: Test error",
+      response: "Sorry, I can't respond to that due to: Test error",
     };
 
     expect(errorResponse).toHaveProperty('error');
@@ -233,7 +233,7 @@ describe('Error Handling', () => {
     const errorMessage = 'Rate limit exceeded';
     const userMessage = `Sorry, I can't respond to that due to: ${errorMessage}`;
 
-    expect(userMessage).toBe('Sorry, I can\'t respond to that due to: Rate limit exceeded');
+    expect(userMessage).toBe("Sorry, I can't respond to that due to: Rate limit exceeded");
   });
 
   test('handles Error instances', () => {

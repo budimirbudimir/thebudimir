@@ -6,38 +6,82 @@ const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral-7b-instruct-v0.3-q4_k_m:custom';
 const OLLAMA_VISION_MODEL = process.env.OLLAMA_VISION_MODEL || 'llava-phi3:latest'; // Vision model for images (lighter than llava)
 
+export interface OllamaModel {
+  name: string;
+  modifiedAt: string;
+  size: number;
+  details?: {
+    format?: string;
+    family?: string;
+    families?: string[];
+    parameterSize?: string;
+    quantizationLevel?: string;
+  };
+}
+
 /**
- * Convert image to PNG format if it's WebP or other potentially unsupported formats
+ * Optimize image for API compatibility: resize to 800x800 max and compress
  */
-async function convertImageToPng(base64Data: string): Promise<string> {
+async function optimizeImage(base64Data: string, format: string): Promise<string> {
   try {
-    // Decode base64 to buffer
     const buffer = Buffer.from(base64Data, 'base64');
+    const image = sharp(buffer);
+    const metadata = await image.metadata();
 
-    console.log('🔄 Converting WebP image to PNG for compatibility...');
+    console.log(`🔄 Optimizing image: ${metadata.width}x${metadata.height}, format=${format}`);
 
-    // Convert to PNG using sharp
-    const pngBuffer = await sharp(buffer)
-      .png({
-        compressionLevel: 6, // Balance between speed and size
-        adaptiveFiltering: true,
-      })
-      .toBuffer();
+    // Resize to max 800x800 for better API compatibility
+    const maxDimension = 800;
+    let resizedImage = image;
 
-    const pngBase64 = pngBuffer.toString('base64');
+    if (metadata.width && metadata.height) {
+      if (metadata.width > maxDimension || metadata.height > maxDimension) {
+        resizedImage = image.resize(maxDimension, maxDimension, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        });
+        console.log(`   📐 Resizing to max ${maxDimension}px`);
+      }
+    }
+
+    // Convert to JPEG with quality 85 for better compression (unless it's PNG with transparency)
+    const hasAlpha = metadata.hasAlpha;
+    let optimizedBuffer: Buffer;
+
+    if (hasAlpha) {
+      // Keep PNG for images with transparency but optimize
+      optimizedBuffer = await resizedImage
+        .png({
+          compressionLevel: 9,
+          quality: 85,
+        })
+        .toBuffer();
+      console.log('   💾 Optimized as PNG (transparency detected)');
+    } else {
+      // Convert to JPEG for better compression
+      optimizedBuffer = await resizedImage
+        .jpeg({
+          quality: 85,
+          progressive: true,
+        })
+        .toBuffer();
+      console.log('   💾 Converted to JPEG for better compression');
+    }
+
+    const optimizedBase64 = optimizedBuffer.toString('base64');
     const originalSizeMB = (base64Data.length / (1024 * 1024)).toFixed(2);
-    const newSizeMB = (pngBase64.length / (1024 * 1024)).toFixed(2);
+    const newSizeMB = (optimizedBase64.length / (1024 * 1024)).toFixed(2);
 
-    console.log(`   ✅ Converted WebP to PNG: ${originalSizeMB}MB -> ${newSizeMB}MB`);
+    console.log(`   ✅ Optimized: ${originalSizeMB}MB -> ${newSizeMB}MB`);
 
-    return pngBase64;
+    return optimizedBase64;
   } catch (error) {
-    console.error('⚠️  Image conversion failed, using original:', error);
-    return base64Data; // Return original on error
+    console.error('⚠️  Image optimization failed:', error);
+    throw new Error('Failed to process image. Please try a different image.');
   }
 }
 
-export async function chat(request: ChatRequest): Promise<ChatResponse> {
+export async function chat(request: ChatRequest & { model?: string }): Promise<ChatResponse> {
   const messages: Array<{ role: string; content: string | string[]; images?: string[] }> = [];
   const toolsUsed: string[] = [];
 
@@ -106,9 +150,12 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
       throw new Error('Invalid base64 image data');
     }
 
-    // Convert WebP to PNG if needed
-    if (imageFormat.toLowerCase() === 'webp') {
-      base64Data = await convertImageToPng(base64Data);
+    // Optimize image for better performance (resize to 800x800 + compress)
+    try {
+      base64Data = await optimizeImage(base64Data, imageFormat);
+    } catch (error) {
+      console.error('Image optimization error:', error);
+      throw error;
     }
 
     messages.push({
@@ -120,8 +167,12 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
     messages.push({ role: 'user', content: request.message });
   }
 
-  // Use vision model if image is present
-  const modelToUse = request.imageData ? OLLAMA_VISION_MODEL : OLLAMA_MODEL;
+  // Use vision model if image is present, or custom model if specified
+  const modelToUse = request.model
+    ? request.model
+    : request.imageData
+      ? OLLAMA_VISION_MODEL
+      : OLLAMA_MODEL;
 
   if (request.imageData) {
     console.log(`🤖 Using vision model: ${modelToUse}`);
@@ -174,6 +225,23 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
     throw new Error(
       `Failed to communicate with local AI service: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
+  }
+}
+
+export async function listModels(): Promise<OllamaModel[]> {
+  try {
+    const response = await fetch(`${OLLAMA_URL}/api/tags`);
+
+    if (!response.ok) {
+      console.error('Failed to fetch Ollama models:', response.statusText);
+      return [];
+    }
+
+    const data = (await response.json()) as { models?: OllamaModel[] };
+    return data.models || [];
+  } catch (error) {
+    console.error('Error fetching Ollama models:', error);
+    return [];
   }
 }
 

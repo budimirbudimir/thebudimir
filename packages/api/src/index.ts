@@ -52,6 +52,40 @@ const server = Bun.serve({
       );
     }
 
+    // Models endpoint
+    if (url.pathname === '/v1/models' && req.method === 'GET') {
+      try {
+        const [ollamaModels, mistralModels] = await Promise.all([
+          ollama.listModels(),
+          mistral.listModels(),
+        ]);
+
+        return Response.json(
+          {
+            ollama: ollamaModels.map((m) => ({
+              id: m.name,
+              name: m.name,
+              size: m.size,
+              modifiedAt: m.modifiedAt,
+            })),
+            ghmodels: mistralModels.map((m) => ({
+              id: m.id,
+              name: m.name,
+              description: m.description,
+              capabilities: m.capabilities,
+            })),
+          },
+          { headers: corsHeaders }
+        );
+      } catch (error) {
+        console.error('Models fetch error:', error);
+        return Response.json(
+          { error: 'Failed to fetch available models' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
     // Chat endpoint
     if (url.pathname === '/v1/chat' && req.method === 'POST') {
       if (!aiService.isConfigured()) {
@@ -70,9 +104,20 @@ const server = Bun.serve({
           maxTokens?: number;
           useTools?: boolean;
           useWebSearch?: boolean;
+          model?: string;
+          service?: 'ollama' | 'ghmodels';
         };
-        const { message, imageData, systemPrompt, temperature, maxTokens, useTools, useWebSearch } =
-          body;
+        const {
+          message,
+          imageData,
+          systemPrompt,
+          temperature,
+          maxTokens,
+          useTools,
+          useWebSearch,
+          model,
+          service,
+        } = body;
 
         if (!message || typeof message !== 'string') {
           return Response.json(
@@ -81,13 +126,26 @@ const server = Bun.serve({
           );
         }
 
-        const response = await aiService.chat({
+        // Select service based on request or default
+        const selectedService =
+          service === 'ghmodels' ? mistral : service === 'ollama' ? ollama : aiService;
+
+        // Check if selected service is configured
+        if (!selectedService.isConfigured()) {
+          return Response.json(
+            { error: 'Selected AI service is not configured' },
+            { status: 503, headers: corsHeaders }
+          );
+        }
+
+        const response = await selectedService.chat({
           message,
           imageData,
           systemPrompt,
           temperature,
           maxTokens,
           useTools: useWebSearch ?? useTools,
+          model,
         });
 
         return Response.json(response, { headers: corsHeaders });
