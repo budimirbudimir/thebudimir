@@ -212,7 +212,7 @@ export async function chat(request: ChatRequest & { model?: string }): Promise<C
       );
     }
 
-    // Mistral expects images in content array format
+    // GitHub Models expects a simpler format - just the data URL string in an array
     messages.push({
       role: 'user',
       content: [
@@ -222,9 +222,7 @@ export async function chat(request: ChatRequest & { model?: string }): Promise<C
         },
         {
           type: 'image_url',
-          image_url: {
-            url: imageDataUrl, // base64 data URL (converted if needed)
-          },
+          image_url: imageDataUrl, // base64 data URL directly as string
         },
       ] as any,
     } as any);
