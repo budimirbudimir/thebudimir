@@ -10,6 +10,7 @@ import {
   Loader,
   Paper,
   ScrollArea,
+  Select,
   Stack,
   Text,
   TextInput,
@@ -25,6 +26,19 @@ interface Message {
   imageUrl?: string;
 }
 
+interface ModelInfo {
+  id: string;
+  name: string;
+  description?: string;
+  size?: number;
+  capabilities?: string[];
+}
+
+interface ModelsResponse {
+  ollama: ModelInfo[];
+  ghmodels: ModelInfo[];
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -33,6 +47,12 @@ export default function Chat() {
   const [useWebSearch, setUseWebSearch] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [availableModels, setAvailableModels] = useState<ModelsResponse>({
+    ollama: [],
+    ghmodels: [],
+  });
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [selectedService, setSelectedService] = useState<'ollama' | 'ghmodels'>('ghmodels');
   const viewport = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We want to scroll when messages change
@@ -45,6 +65,36 @@ export default function Chat() {
   const apiEndpoint = import.meta.env.PROD
     ? 'https://api.thebudimir.com/v1/chat'
     : 'http://localhost:3000/v1/chat';
+
+  const modelsEndpoint = import.meta.env.PROD
+    ? 'https://api.thebudimir.com/v1/models'
+    : 'http://localhost:3000/v1/models';
+
+  // Fetch available models on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: modelsEndpoint is constant based on env
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch(modelsEndpoint);
+        if (response.ok) {
+          const data = (await response.json()) as ModelsResponse;
+          setAvailableModels(data);
+
+          // Set default model
+          if (data.ghmodels.length > 0) {
+            setSelectedModel(data.ghmodels[0].id);
+            setSelectedService('ghmodels');
+          } else if (data.ollama.length > 0) {
+            setSelectedModel(data.ollama[0].id);
+            setSelectedService('ollama');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+      }
+    };
+    fetchModels();
+  }, [modelsEndpoint]);
 
   const handleImageSelect = (file: File | null) => {
     setSelectedImage(file);
@@ -93,6 +143,8 @@ export default function Chat() {
           imageData: imageDataToSend, // Send base64 data URL
           systemPrompt: 'You are a helpful assistant.',
           useWebSearch,
+          model: selectedModel,
+          service: selectedService,
         }),
       });
 
@@ -159,9 +211,16 @@ export default function Chat() {
                 <Text size="lg" c="dimmed">
                   Start a conversation with the AI assistant
                 </Text>
-                <Text size="sm" c="dimmed" mt="xs">
-                  Powered by Ministral-3B via GitHub Models
-                </Text>
+                {selectedModel && (
+                  <Text size="sm" c="dimmed" mt="xs">
+                    Using:{' '}
+                    {availableModels.ollama.find((m) => m.id === selectedModel)?.name ||
+                      availableModels.ghmodels.find((m) => m.id === selectedModel)?.name ||
+                      selectedModel}
+                    {' via '}
+                    {selectedService === 'ollama' ? 'Ollama (Local)' : 'GitHub Models'}
+                  </Text>
+                )}
               </Box>
             )}
 
@@ -243,6 +302,34 @@ export default function Chat() {
           )}
           <form onSubmit={handleSubmit}>
             <Group gap="sm" mb="sm">
+              <Select
+                placeholder="Select model"
+                value={selectedModel}
+                onChange={(value) => {
+                  if (value) {
+                    setSelectedModel(value);
+                    // Determine service based on which list contains the model
+                    if (availableModels.ollama.some((m) => m.id === value)) {
+                      setSelectedService('ollama');
+                    } else {
+                      setSelectedService('ghmodels');
+                    }
+                  }
+                }}
+                data={[
+                  ...availableModels.ghmodels.map((m) => ({
+                    value: m.id,
+                    label: `${m.name} (GitHub Models)`,
+                  })),
+                  ...availableModels.ollama.map((m) => ({
+                    value: m.id,
+                    label: `${m.name} (Ollama)`,
+                  })),
+                ]}
+                disabled={isLoading}
+                style={{ minWidth: '250px' }}
+                size="sm"
+              />
               <Checkbox
                 label="Enable web search"
                 checked={useWebSearch}

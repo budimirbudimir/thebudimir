@@ -172,13 +172,12 @@ describe('Mistral service', () => {
     });
   });
 
-  describe('convertImageToPng', () => {
-    test('successfully converts a WebP image to PNG', async () => {
+  describe('optimizeImage', () => {
+    test('validates WebP image format detection', async () => {
       // Create a valid base64 string (1x1 pixel WebP image)
-      const webpBase64 =
-        'UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=';
+      const webpBase64 = 'UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=';
 
-      // Manually test the conversion logic
+      // Test the image detection logic
       const buffer = Buffer.from(webpBase64, 'base64');
       expect(buffer).toBeDefined();
       expect(buffer.length).toBeGreaterThan(0);
@@ -188,7 +187,7 @@ describe('Mistral service', () => {
       expect(signature).toBe('RIFF');
     });
 
-    test('returns original data for non-WebP images', async () => {
+    test('validates PNG image format detection', async () => {
       // Create a small PNG base64 (1x1 red pixel)
       const pngBase64 =
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
@@ -210,7 +209,7 @@ describe('Mistral service', () => {
       const buffer = Buffer.from(invalidBase64, 'base64');
       expect(buffer).toBeDefined();
 
-      // The conversion logic should catch errors and return original data
+      // The optimization logic should catch errors and throw proper error
       // We're testing the error handling path exists
       expect(() => Buffer.from(invalidBase64, 'base64')).not.toThrow();
     });

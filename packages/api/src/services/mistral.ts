@@ -43,35 +43,98 @@ export interface ChatResponse {
   toolsUsed?: string[];
 }
 
+export interface MistralModel {
+  id: string;
+  name: string;
+  description?: string;
+  capabilities?: string[];
+}
+
+// GitHub Models available models (as of 2024)
+const AVAILABLE_MODELS: MistralModel[] = [
+  {
+    id: 'mistral-ai/Ministral-3B',
+    name: 'Ministral-3B',
+    description: 'Fast and efficient 3B parameter model',
+    capabilities: ['text', 'vision', 'tools'],
+  },
+  {
+    id: 'mistral-ai/Mistral-7B-Instruct-v0.3',
+    name: 'Mistral-7B-Instruct',
+    description: 'Versatile 7B parameter instruction-tuned model',
+    capabilities: ['text', 'tools'],
+  },
+  {
+    id: 'mistral-ai/Mistral-Small',
+    name: 'Mistral-Small',
+    description: 'Balanced performance and efficiency',
+    capabilities: ['text', 'tools'],
+  },
+];
+
 // Define web search tool for function calling
 /**
- * Convert image to PNG format if it's WebP or other potentially unsupported formats
+ * Optimize image for API compatibility: resize to 800x800 max and compress
  */
-async function convertImageToPng(base64Data: string): Promise<string> {
+async function optimizeImage(base64Data: string, format: string): Promise<string> {
   try {
-    // Decode base64 to buffer
     const buffer = Buffer.from(base64Data, 'base64');
+    const image = sharp(buffer);
+    const metadata = await image.metadata();
 
-    console.log('🔄 Converting WebP image to PNG for compatibility...');
+    console.log(`🔄 Optimizing image: ${metadata.width}x${metadata.height}, format=${format}`);
 
-    // Convert to PNG using sharp
-    const pngBuffer = await sharp(buffer)
-      .png({
-        compressionLevel: 6, // Balance between speed and size
-        adaptiveFiltering: true,
-      })
-      .toBuffer();
+    // Resize to max 800x800 for better API compatibility
+    const maxDimension = 800;
+    let resizedImage = image;
 
-    const pngBase64 = pngBuffer.toString('base64');
+    if (metadata.width && metadata.height) {
+      if (metadata.width > maxDimension || metadata.height > maxDimension) {
+        resizedImage = image.resize(maxDimension, maxDimension, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        });
+        console.log(`   📐 Resizing to max ${maxDimension}px`);
+      }
+    }
+
+    // Convert to JPEG with quality 85 for better compression (unless it's PNG with transparency)
+    const hasAlpha = metadata.hasAlpha;
+    let optimizedBuffer: Buffer;
+    let finalFormat: string;
+
+    if (hasAlpha) {
+      // Keep PNG for images with transparency but optimize
+      optimizedBuffer = await resizedImage
+        .png({
+          compressionLevel: 9,
+          quality: 85,
+        })
+        .toBuffer();
+      finalFormat = 'png';
+      console.log('   💾 Optimized as PNG (transparency detected)');
+    } else {
+      // Convert to JPEG for better compression
+      optimizedBuffer = await resizedImage
+        .jpeg({
+          quality: 85,
+          progressive: true,
+        })
+        .toBuffer();
+      finalFormat = 'jpeg';
+      console.log('   💾 Converted to JPEG for better compression');
+    }
+
+    const optimizedBase64 = optimizedBuffer.toString('base64');
     const originalSizeMB = (base64Data.length / (1024 * 1024)).toFixed(2);
-    const newSizeMB = (pngBase64.length / (1024 * 1024)).toFixed(2);
+    const newSizeMB = (optimizedBase64.length / (1024 * 1024)).toFixed(2);
 
-    console.log(`   ✅ Converted WebP to PNG: ${originalSizeMB}MB -> ${newSizeMB}MB`);
+    console.log(`   ✅ Optimized: ${originalSizeMB}MB -> ${newSizeMB}MB`);
 
-    return pngBase64;
+    return `data:image/${finalFormat};base64,${optimizedBase64}`;
   } catch (error) {
-    console.error('⚠️  Image conversion failed, using original:', error);
-    return base64Data; // Return original on error
+    console.error('⚠️  Image optimization failed:', error);
+    throw new Error('Failed to process image. Please try a different image.');
   }
 }
 
@@ -94,7 +157,7 @@ const webSearchTool = {
   },
 };
 
-export async function chat(request: ChatRequest): Promise<ChatResponse> {
+export async function chat(request: ChatRequest & { model?: string }): Promise<ChatResponse> {
   if (!GH_MODELS_TOKEN) {
     throw new Error('AI service not configured');
   }
@@ -113,7 +176,7 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
       throw new Error('Invalid image data format. Expected data URL with base64.');
     }
 
-    let base64Data = parts[1];
+    const base64Data = parts[1];
     const formatMatch = parts[0].match(/image\/(\w+)/);
     const imageFormat = formatMatch ? formatMatch[1] : 'unknown';
 
@@ -121,7 +184,7 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
       `🖼️  Processing image: format=${imageFormat}, size=${(base64Data.length / (1024 * 1024)).toFixed(2)}MB`
     );
 
-    // Validate image size
+    // Validate image size before processing
     const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
     if (base64Data.length > MAX_IMAGE_SIZE) {
       const sizeMB = (base64Data.length / (1024 * 1024)).toFixed(1);
@@ -130,16 +193,24 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
       );
     }
 
-    // Convert WebP to PNG if needed
-    if (imageFormat.toLowerCase() === 'webp') {
-      base64Data = await convertImageToPng(base64Data);
+    // Optimize image for API compatibility (resize to 800x800 + compress)
+    let imageDataUrl: string;
+    try {
+      imageDataUrl = await optimizeImage(base64Data, imageFormat);
+    } catch (error) {
+      console.error('Image optimization error:', error);
+      throw error;
     }
 
-    // Reconstruct data URL with potentially converted image
-    const imageDataUrl =
-      imageFormat.toLowerCase() === 'webp'
-        ? `data:image/png;base64,${base64Data}`
-        : request.imageData;
+    // Validate optimized size
+    const optimizedSize = imageDataUrl.split(',')[1]?.length || 0;
+    const MAX_OPTIMIZED_SIZE = 3 * 1024 * 1024; // 3MB after optimization
+    if (optimizedSize > MAX_OPTIMIZED_SIZE) {
+      const sizeMB = (optimizedSize / (1024 * 1024)).toFixed(1);
+      throw new Error(
+        `Image is still too large after optimization (${sizeMB}MB). Please use a smaller image.`
+      );
+    }
 
     // Mistral expects images in content array format
     messages.push({
@@ -168,10 +239,12 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
   while (iterations < maxIterations) {
     iterations++;
 
+    const modelToUse = request.model || 'mistral-ai/Ministral-3B';
+
     let response: Awaited<ReturnType<typeof client.chat.complete>>;
     try {
       response = await client.chat.complete({
-        model: 'mistral-ai/Ministral-3B',
+        model: modelToUse,
         messages: messages as any,
         temperature: request.temperature ?? 0.7,
         maxTokens: request.maxTokens ?? 2000,
@@ -251,6 +324,14 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
   }
 
   throw new Error('Maximum tool call iterations reached');
+}
+
+export async function listModels(): Promise<MistralModel[]> {
+  if (!GH_MODELS_TOKEN) {
+    return [];
+  }
+  // Return the predefined list of available models
+  return AVAILABLE_MODELS;
 }
 
 export function isConfigured(): boolean {
