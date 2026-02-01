@@ -7,3 +7,4 @@ docs
 .env
 .env.local
 .biome-cache
+packages/api/certs
