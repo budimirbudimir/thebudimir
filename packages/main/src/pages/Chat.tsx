@@ -53,6 +53,7 @@ export default function Chat() {
   });
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedService, setSelectedService] = useState<'ollama' | 'ghmodels'>('ghmodels');
+  const [imageWarning, setImageWarning] = useState<string | null>(null);
   const viewport = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We want to scroll when messages change
@@ -104,6 +105,35 @@ export default function Chat() {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+
+      // Auto-switch to Ollama vision model when image is selected
+      if (availableModels.ollama.length > 0) {
+        // Find a vision-capable model (llava, glm, or models with 'vision' in name)
+        const visionModel = availableModels.ollama.find(
+          (m) =>
+            m.name.toLowerCase().includes('llava') ||
+            m.name.toLowerCase().includes('glm') ||
+            m.name.toLowerCase().includes('vision')
+        );
+
+        if (visionModel) {
+          setSelectedModel(visionModel.id);
+          setSelectedService('ollama');
+          setImageWarning(null);
+        } else {
+          // Use first Ollama model as fallback but warn user
+          setSelectedModel(availableModels.ollama[0].id);
+          setSelectedService('ollama');
+          setImageWarning(
+            'No vision-capable models detected. Consider using llava-phi3 or glm-4.6v-flash.'
+          );
+        }
+      } else {
+        // No Ollama models available
+        setImageWarning(
+          'Image analysis requires Ollama with a vision model. Please install Ollama locally and pull a vision model (e.g., ollama pull llava-phi3).'
+        );
+      }
     } else {
       setImagePreview(null);
     }
@@ -112,6 +142,7 @@ export default function Chat() {
   const clearImage = () => {
     setSelectedImage(null);
     setImagePreview(null);
+    setImageWarning(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -360,6 +391,11 @@ export default function Chat() {
                 </Button>
               )}
             </Group>
+            {imageWarning && (
+              <Alert color="yellow" mb="sm" title="Image Analysis Note">
+                {imageWarning}
+              </Alert>
+            )}
             {imagePreview && (
               <Paper p="xs" mb="sm" withBorder>
                 <Image
