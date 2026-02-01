@@ -55,6 +55,8 @@ const server = Bun.serve({
     // Models endpoint
     if (url.pathname === '/v1/models' && req.method === 'GET') {
       try {
+        // In production, return HTTPS proxy URL for Ollama so browsers can access it
+        // Users need to run: bun run ollama-proxy (see OLLAMA-PROXY.md)
         const [ollamaModels, mistralModels] = await Promise.all([
           ollama.listModels(),
           mistral.listModels(),

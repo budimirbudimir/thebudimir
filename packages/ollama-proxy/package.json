@@ -1,0 +1,17 @@
+{
+  "name": "@thebudimir/ollama-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HTTPS proxy for accessing local Ollama from production websites",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "setup": "./setup.sh",
+    "build": "bun build --compile src/index.ts --outfile dist/ollama-proxy",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.0.0",
+    "typescript": "^5.3.3"
+  }
+}

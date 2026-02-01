@@ -40,6 +40,10 @@ bun run dev
 bun run dev:main    # Frontend only
 bun run dev:api     # API only
 
+# Start Ollama HTTPS proxy (optional, for production site access)
+bun run proxy:setup # First time: generate SSL certificates
+bun run proxy:start # Start proxy server
+
 # Or with containers (Podman)
 bun run container:dev
 # or: make container-dev
@@ -77,7 +81,8 @@ make test-api
 ```
 ├── packages/
 │   ├── main/          # Frontend (React + Vite)
-│   └── api/           # Backend API (Bun HTTP server)
+│   ├── api/           # Backend API (Bun HTTP server)
+│   └── ollama-proxy/  # HTTPS proxy for local Ollama access
 ├── dist/              # Build output
 ├── docs/              # GitHub Pages deployment
 ├── .github/workflows/ # CI/CD pipelines
@@ -126,6 +131,7 @@ type(scope): subject
 ### Scopes
 - `main` - Frontend changes
 - `api` - Backend API changes
+- `proxy` - Ollama proxy changes
 - `deps` - Dependency updates
 - `ci` - CI/CD changes
 - `release` - Release-related changes

@@ -1,0 +1,7 @@
+# SSL certificates
+certs/
+
+# Build outputs
+dist/
+*.exe
+ollama-proxy-*

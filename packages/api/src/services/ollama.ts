@@ -2,6 +2,10 @@ import sharp from 'sharp';
 import type { ChatRequest, ChatResponse } from './mistral';
 import { formatSearchResults, webSearch } from './search';
 
+// OLLAMA_URL can be:
+// - http://localhost:11434 (default, direct Ollama access)
+// - https://localhost:8443 (HTTPS proxy for browser access from production sites)
+// For production browser access, run: bun run ollama-proxy
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral-7b-instruct-v0.3-q4_k_m:custom';
 const OLLAMA_VISION_MODEL = process.env.OLLAMA_VISION_MODEL || 'llava-phi3:latest'; // Vision model for images (lighter than llava)
