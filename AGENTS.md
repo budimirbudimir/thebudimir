@@ -7,6 +7,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 This is a monorepo for personal projects by Budimir Budimir. Contains:
 - **main** - Personal website/portfolio (Vite + React + TypeScript)
 - **api** - Backend API server (Bun HTTP server with TypeScript)
+- **ollama-proxy** - HTTPS proxy for local Ollama access from production sites
 
 Additional projects can be added as separate packages under different subdomains.
 
@@ -25,6 +26,8 @@ bun install
 bun run dev              # Start all dev servers
 bun run dev:main         # Start frontend only
 bun run dev:api          # Start API only
+bun run proxy:setup      # Generate SSL certs for proxy (first time)
+bun run proxy:start      # Start Ollama HTTPS proxy
 # Or use containers: bun run container:dev
 ```
 
@@ -33,6 +36,7 @@ bun run dev:api          # Start API only
 bun run build            # Build all packages
 bun run build:main       # Build main package only
 bun run build:api        # Build API package
+bun run build:proxy      # Build proxy as standalone executable
 bun run type-check       # Run TypeScript compiler
 ```
 
@@ -71,6 +75,11 @@ bun run container:build  # Build production image
   - **src/index.ts**: Bun HTTP server entry point
   - **Dockerfile**: API-specific container build
   - **tsconfig.json**: TypeScript configuration
+- **packages/ollama-proxy/**: HTTPS proxy for local Ollama
+  - **src/index.ts**: HTTPS proxy server with CORS support
+  - **setup.sh**: Certificate generation script
+  - **README.md**: Proxy documentation and usage guide
+  - **package.json**: Proxy scripts (start, setup, build)
 - **dist/**: Production build output
 - **docs/**: GitHub Pages deployment
 - **.github/workflows/**: CI/CD pipelines (main-ci, api-ci, release)
@@ -104,7 +113,7 @@ Before every commit, these checks run automatically:
 ### Commit Conventions
 - Use conventional commits format: `type(scope): message`
 - See commitlint configuration in `.commitlintrc.json`
-- Valid scopes: main, api, deps, ci, release
+- Valid scopes: main, api, proxy, deps, ci, release
 
 ## Container Preferences
 - **Local Development**: Prefer Podman over Docker for container operations

@@ -24,6 +24,7 @@
       [
         "main",
         "api",
+        "proxy",
         "deps",
         "ci",
         "release"

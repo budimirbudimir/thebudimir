@@ -49,6 +49,14 @@
         "vite-tsconfig-paths": "^6.0.5",
       },
     },
+    "packages/ollama-proxy": {
+      "name": "@thebudimir/ollama-proxy",
+      "version": "1.0.0",
+      "devDependencies": {
+        "@types/bun": "^1.0.0",
+        "typescript": "^5.3.3",
+      },
+    },
   },
   "packages": {
     "@actions/core": ["@actions/core@2.0.3", "", { "dependencies": { "@actions/exec": "^2.0.0", "@actions/http-client": "^3.0.2" } }, "sha512-Od9Thc3T1mQJYddvVPM4QGiLUewdh+3txmDYHHxoNdkqysR1MbCT+rFOtNUxYAz+7+6RIsqipVahY2GJqGPyxA=="],
@@ -390,6 +398,8 @@
     "@thebudimir/api": ["@thebudimir/api@workspace:packages/api"],
 
     "@thebudimir/main": ["@thebudimir/main@workspace:packages/main"],
+
+    "@thebudimir/ollama-proxy": ["@thebudimir/ollama-proxy@workspace:packages/ollama-proxy"],
 
     "@types/babel__core": ["@types/babel__core@7.20.5", "", { "dependencies": { "@babel/parser": "^7.20.7", "@babel/types": "^7.20.7", "@types/babel__generator": "*", "@types/babel__template": "*", "@types/babel__traverse": "*" } }, "sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA=="],
 
