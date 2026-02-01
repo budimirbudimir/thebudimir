@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/budimirbudimir/thebudimir/compare/v1.7.0...v1.8.0) (2026-02-01)
+
+
+### Features
+
+* model selection and image processing ([#35](https://github.com/budimirbudimir/thebudimir/issues/35)) ([ab2c62c](https://github.com/budimirbudimir/thebudimir/commit/ab2c62c6ace58dd76a77b0e31a2f6bd1a982cc88))
+
 # [1.7.0](https://github.com/budimirbudimir/thebudimir/compare/v1.6.0...v1.7.0) (2026-01-31)
 
 
