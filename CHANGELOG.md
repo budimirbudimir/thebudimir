@@ -1,3 +1,17 @@
+# [1.10.0](https://github.com/budimirbudimir/thebudimir/compare/v1.9.1...v1.10.0) (2026-02-01)
+
+
+### Features
+
+* drop images from gh models ([#38](https://github.com/budimirbudimir/thebudimir/issues/38)) ([e45ac54](https://github.com/budimirbudimir/thebudimir/commit/e45ac5413399e751a125dfdc6f9382852f5833e9))
+
+## [1.9.1](https://github.com/budimirbudimir/thebudimir/compare/v1.9.0...v1.9.1) (2026-02-01)
+
+
+### Bug Fixes
+
+* fix ollama and mistral tests, remove gh images ([#37](https://github.com/budimirbudimir/thebudimir/issues/37)) ([28f5302](https://github.com/budimirbudimir/thebudimir/commit/28f5302609d690b8b8311f0a6343a39ef3af7402))
+
 # [1.9.0](https://github.com/budimirbudimir/thebudimir/compare/v1.8.0...v1.9.0) (2026-02-01)
 
 
