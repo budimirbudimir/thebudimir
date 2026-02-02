@@ -35,10 +35,12 @@ services:
     volumes:
       - ./packages/api/src:/app/src:z
       - ./packages/api/node_modules:/app/node_modules:z
+      - ./packages/api/data:/app/data:z
     environment:
       - NODE_ENV=development
       - PORT=3000
       - GH_MODELS_TOKEN=${GH_MODELS_TOKEN}
+      - DB_PATH=/app/data/shopping.db
 
   api-prod:
     build:
@@ -47,10 +49,16 @@ services:
     container_name: thebudimir-api-prod
     ports:
       - "3000:3000"
+    volumes:
+      - api-data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3000
       - GH_MODELS_TOKEN=${GH_MODELS_TOKEN}
       - FRONTEND_URL=${FRONTEND_URL:-https://thebudimir.com}
+      - DB_PATH=/app/data/shopping.db
     profiles:
       - production
+
+volumes:
+  api-data:

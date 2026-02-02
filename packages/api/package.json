@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@mistralai/mistralai": "^1.13.0",
+    "@sentry/bun": "^10.38.0",
     "sharp": "^0.34.5"
   }
 }
