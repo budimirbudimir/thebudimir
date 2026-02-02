@@ -244,7 +244,7 @@ describe('Error Handling', () => {
   });
 
   test('handles non-Error instances', () => {
-    const error = 'String error';
+    const error: unknown = 'String error';
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
     expect(errorMessage).toBe('Unknown error occurred');

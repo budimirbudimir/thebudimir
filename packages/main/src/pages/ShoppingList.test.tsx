@@ -1,5 +1,3 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, mock } from 'bun:test';
 
 // Mock fetch globally
@@ -10,11 +8,6 @@ const mockFetch = mock(() =>
   })
 );
 global.fetch = mockFetch as any;
-
-// Simple test wrapper that provides necessary context
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  return <div>{children}</div>;
-}
 
 describe('ShoppingList', () => {
   beforeEach(() => {
