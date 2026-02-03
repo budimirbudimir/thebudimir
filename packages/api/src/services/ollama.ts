@@ -14,12 +14,79 @@ export interface OllamaModel {
   name: string;
   modifiedAt: string;
   size: number;
+  description?: string;
+  capabilities?: string[];
   details?: {
     format?: string;
     family?: string;
     families?: string[];
     parameterSize?: string;
     quantizationLevel?: string;
+  };
+}
+
+/**
+ * Infer model capabilities and description based on model name patterns
+ */
+function inferModelMetadata(modelName: string): { description: string; capabilities: string[] } {
+  const lowerName = modelName.toLowerCase();
+  
+  // Vision models
+  if (lowerName.includes('llava') || lowerName.includes('glm') || lowerName.includes('vision')) {
+    return {
+      description: 'Multimodal model with vision and text understanding capabilities',
+      capabilities: ['text', 'vision'],
+    };
+  }
+  
+  // Code-specialized models
+  if (lowerName.includes('codestral') || lowerName.includes('codegemma') || lowerName.includes('deepseek-coder')) {
+    return {
+      description: 'Specialized model optimized for code generation and understanding',
+      capabilities: ['text', 'code'],
+    };
+  }
+  
+  // General purpose models
+  if (lowerName.includes('mistral') || lowerName.includes('mixtral')) {
+    return {
+      description: 'General purpose language model for various text tasks',
+      capabilities: ['text'],
+    };
+  }
+  
+  if (lowerName.includes('llama')) {
+    return {
+      description: 'Versatile open-source language model by Meta',
+      capabilities: ['text'],
+    };
+  }
+  
+  if (lowerName.includes('gemma')) {
+    return {
+      description: 'Lightweight open model by Google for efficient inference',
+      capabilities: ['text'],
+    };
+  }
+  
+  if (lowerName.includes('qwen')) {
+    return {
+      description: 'Multilingual model with strong reasoning capabilities',
+      capabilities: ['text'],
+    };
+  }
+  
+  if (lowerName.includes('phi')) {
+    return {
+      description: 'Compact yet capable model by Microsoft Research',
+      capabilities: ['text'],
+    };
+  }
+  
+  // Default for unknown models
+  return {
+    description: 'Local language model',
+    capabilities: ['text'],
   };
 }
 
@@ -242,7 +309,17 @@ export async function listModels(): Promise<OllamaModel[]> {
     }
 
     const data = (await response.json()) as { models?: OllamaModel[] };
-    return data.models || [];
+    const models = data.models || [];
+    
+    // Enrich models with metadata
+    return models.map(model => {
+      const metadata = inferModelMetadata(model.name);
+      return {
+        ...model,
+        description: metadata.description,
+        capabilities: metadata.capabilities,
+      };
+    });
   } catch (error) {
     console.error('Error fetching Ollama models:', error);
     return [];

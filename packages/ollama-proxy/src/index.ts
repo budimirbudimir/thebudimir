@@ -14,11 +14,13 @@ import { isAuthEnabled, verifyToken } from './auth';
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 8443;
+// Allowed origins for browser CORS. Server-to-server requests (no Origin header) are always allowed.
 const ALLOWED_ORIGINS = [
   'https://thebudimir.com',
   'https://api.thebudimir.com',
   'http://localhost:5173', // Vite dev server
   'http://localhost:8080', // Production nginx local
+  'http://localhost:3000', // API dev server
 ];
 
 console.log('🔐 Starting HTTPS Proxy for Ollama...');
@@ -39,10 +41,11 @@ const server = Bun.serve({
 
     // CORS preflight
     if (req.method === 'OPTIONS') {
+      const allowOrigin = !origin ? '*' : (ALLOWED_ORIGINS.includes(origin) ? origin : '');
       return new Response(null, {
         status: 204,
         headers: {
-          'Access-Control-Allow-Origin': origin && ALLOWED_ORIGINS.includes(origin) ? origin : '',
+          'Access-Control-Allow-Origin': allowOrigin,
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           'Access-Control-Max-Age': '86400',
@@ -57,11 +60,12 @@ const server = Bun.serve({
       
       if (!authResult) {
         console.warn('⚠️  Unauthorized request blocked');
+        const allowOrigin = !origin ? '*' : (ALLOWED_ORIGINS.includes(origin) ? origin : '');
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': origin && ALLOWED_ORIGINS.includes(origin) ? origin : '',
+            'Access-Control-Allow-Origin': allowOrigin,
           },
         });
       }
@@ -83,10 +87,11 @@ const server = Bun.serve({
 
       // Clone response and add CORS headers
       const headers = new Headers(response.headers);
-      if (origin && ALLOWED_ORIGINS.includes(origin)) {
-        headers.set('Access-Control-Allow-Origin', origin);
+      const allowOrigin = !origin ? '*' : (ALLOWED_ORIGINS.includes(origin) ? origin : '');
+      if (allowOrigin) {
+        headers.set('Access-Control-Allow-Origin', allowOrigin);
         headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        headers.set('Access-Control-Allow-Headers', 'Content-Type');
+        headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       }
 
       return new Response(response.body, {
@@ -96,6 +101,7 @@ const server = Bun.serve({
       });
     } catch (error) {
       console.error('❌ Proxy error:', error);
+      const allowOrigin = !origin ? '*' : (ALLOWED_ORIGINS.includes(origin) ? origin : '');
       return new Response(
         JSON.stringify({
           error: 'Failed to connect to Ollama',
@@ -105,7 +111,7 @@ const server = Bun.serve({
           status: 502,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': origin && ALLOWED_ORIGINS.includes(origin) ? origin : '',
+            'Access-Control-Allow-Origin': allowOrigin,
           },
         }
       );
