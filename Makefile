@@ -1,12 +1,17 @@
-.PHONY: help install dev dev-main dev-api build build-main build-api type-check test test-main test-api lint format check clean container-dev container-dev-main container-dev-api container-prod container-build ollama-start ollama-stop ollama-restart
+.PHONY: help install dev dev-main dev-api dev-full dev-tunnel build build-main build-api type-check test test-main test-api lint format check clean container-dev container-dev-main container-dev-api container-prod container-build ollama-start ollama-stop ollama-restart proxy-start proxy-setup tunnel-start
 
 # Default target
 help:
 	@echo "Available commands:"
 	@echo "  make install          - Install dependencies with Bun"
-	@echo "  make dev             - Start all dev servers"
+	@echo "  make dev             - Start all dev servers (main + api)"
+	@echo "  make dev-full        - Start main + api + ollama proxy"
+	@echo "  make dev-tunnel      - Start main + api + ollama proxy + localtunnel"
 	@echo "  make dev-main        - Start main (frontend) dev server"
 	@echo "  make dev-api         - Start API dev server"
+	@echo "  make proxy-setup     - Generate SSL certs for Ollama proxy"
+	@echo "  make proxy-start     - Start Ollama HTTPS proxy"
+	@echo "  make tunnel-start    - Start localtunnel to expose Ollama"
 	@echo "  make build           - Build all packages"
 	@echo "  make build-main      - Build main package only"
 	@echo "  make build-api       - Build API package"
@@ -35,11 +40,36 @@ install:
 dev:
 	bun run dev
 
+dev-full:
+	@echo "🚀 Starting main + api + ollama proxy..."
+	@bunx concurrently -n main,api,proxy -c cyan,magenta,yellow \
+		"bun run dev:main" \
+		"bun run dev:api" \
+		"bun run proxy:start"
+
+dev-tunnel:
+	@echo "🚀 Starting main + api + ollama proxy + localtunnel..."
+	@bunx concurrently -n main,api,proxy,tunnel -c cyan,magenta,yellow,green \
+		"bun run dev:main" \
+		"bun run dev:api" \
+		"bun run proxy:start" \
+		"bun run tunnel:start"
+
 dev-main:
 	bun run dev:main
 
 dev-api:
 	bun run dev:api
+
+# Proxy & Tunnel
+proxy-setup:
+	bun run proxy:setup
+
+proxy-start:
+	bun run proxy:start
+
+tunnel-start:
+	bun run tunnel:start
 
 # Build
 build:

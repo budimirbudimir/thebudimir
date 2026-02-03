@@ -2,13 +2,15 @@
  * HTTPS Proxy for Ollama
  *
  * This proxy allows browsers to access your local Ollama instance from HTTPS sites.
- * It handles CORS and provides HTTPS access to the HTTP-only Ollama service.
+ * It handles CORS, provides HTTPS access, and optionally requires Clerk authentication.
  *
  * Usage:
  *   bun run ollama-proxy.ts
  *
  * Then update your frontend to use https://localhost:8443 instead of http://localhost:11434
  */
+
+import { isAuthEnabled, verifyToken } from './auth';
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 8443;
@@ -22,6 +24,7 @@ const ALLOWED_ORIGINS = [
 console.log('🔐 Starting HTTPS Proxy for Ollama...');
 console.log(`   Proxying: ${OLLAMA_URL}`);
 console.log(`   Port: ${PROXY_PORT}`);
+console.log(`   Auth: ${isAuthEnabled() ? 'Enabled ✅' : 'Disabled ⚠️'}`);
 
 const server = Bun.serve({
   port: PROXY_PORT,
@@ -41,10 +44,28 @@ const server = Bun.serve({
         headers: {
           'Access-Control-Allow-Origin': origin && ALLOWED_ORIGINS.includes(origin) ? origin : '',
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           'Access-Control-Max-Age': '86400',
         },
       });
+    }
+
+    // Verify authentication if enabled
+    if (isAuthEnabled()) {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      
+      if (!authResult) {
+        console.warn('⚠️  Unauthorized request blocked');
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': origin && ALLOWED_ORIGINS.includes(origin) ? origin : '',
+          },
+        });
+      }
+      console.log(`✅ Authenticated proxy request from user: ${authResult.userId}`);
     }
 
     try {

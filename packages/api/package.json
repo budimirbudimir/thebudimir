@@ -15,6 +15,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@clerk/backend": "^2.29.7",
     "@mistralai/mistralai": "^1.13.0",
     "@sentry/bun": "^10.38.0",
     "sharp": "^0.34.5"
