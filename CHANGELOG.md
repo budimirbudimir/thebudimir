@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/budimirbudimir/thebudimir/compare/v1.11.0...v1.12.0) (2026-02-03)
+
+
+### Features
+
+* render code and links in chat ([#41](https://github.com/budimirbudimir/thebudimir/issues/41)) ([fd354ae](https://github.com/budimirbudimir/thebudimir/commit/fd354ae4b973760a7374ec7a7a732bafb1867a62))
+
 # [1.11.0](https://github.com/budimirbudimir/thebudimir/compare/v1.10.0...v1.11.0) (2026-02-03)
 
 
