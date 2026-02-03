@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/budimirbudimir/thebudimir/compare/v1.12.0...v1.13.0) (2026-02-03)
+
+
+### Features
+
+* add api/proxy auth and tunnel ([#43](https://github.com/budimirbudimir/thebudimir/issues/43)) ([b58dba2](https://github.com/budimirbudimir/thebudimir/commit/b58dba2b9f311fa0dc23ea0d2e7b10fd52416b03))
+
 # [1.12.0](https://github.com/budimirbudimir/thebudimir/compare/v1.11.0...v1.12.0) (2026-02-03)
 
 
