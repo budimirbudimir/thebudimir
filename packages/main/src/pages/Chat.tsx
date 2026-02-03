@@ -22,6 +22,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
+import { useAuth } from '@clerk/clerk-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -44,6 +45,7 @@ interface ModelsResponse {
 }
 
 export default function Chat() {
+  const { getToken } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -168,10 +170,12 @@ export default function Chat() {
     setError(null);
 
     try {
+      const token = await getToken();
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: JSON.stringify({
           message: userMessage.content,

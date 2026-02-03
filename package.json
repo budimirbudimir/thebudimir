@@ -28,6 +28,7 @@
     "test:api": "bun run --filter @thebudimir/api test",
     "proxy:start": "bun run --filter @thebudimir/ollama-proxy start",
     "proxy:setup": "bun run --filter @thebudimir/ollama-proxy setup",
+    "tunnel:start": "./scripts/localtunnel-setup.sh",
     "lint": "biome lint packages/",
     "format": "biome format --write packages/",
     "check": "biome check --write packages/",

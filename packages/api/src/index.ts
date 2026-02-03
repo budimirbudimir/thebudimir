@@ -2,7 +2,9 @@ import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import * as mistral from './services/mistral';
-import * as ollama from './services/ollama';import * as Sentry from "@sentry/bun";
+import * as ollama from './services/ollama';
+import { isAuthEnabled, verifyToken } from './auth';
+import * as Sentry from "@sentry/bun";
 
 Sentry.init({
   dsn: "https://af687efb7802278d39c8f71712f7757a@o4510818627289088.ingest.de.sentry.io/4510818639741008",
@@ -161,6 +163,20 @@ const server = Bun.serve({
 
     // Chat endpoint
     if (url.pathname === '/v1/chat' && req.method === 'POST') {
+      // Verify authentication if enabled
+      if (isAuthEnabled()) {
+        const authHeader = req.headers.get('Authorization');
+        const authResult = await verifyToken(authHeader);
+        
+        if (!authResult) {
+          return Response.json(
+            { error: 'Unauthorized' },
+            { status: 401, headers: corsHeaders }
+          );
+        }
+        console.log(`✅ Authenticated request from user: ${authResult.userId}`);
+      }
+
       if (!aiService.isConfigured()) {
         return Response.json(
           { error: 'AI service not configured' },
