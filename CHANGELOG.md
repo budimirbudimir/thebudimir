@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/budimirbudimir/thebudimir/compare/v1.10.0...v1.11.0) (2026-02-03)
+
+
+### Features
+
+* drop images from gh models ([#40](https://github.com/budimirbudimir/thebudimir/issues/40)) ([0ab090d](https://github.com/budimirbudimir/thebudimir/commit/0ab090d4bef12fc656aef8cf93662b1f2349f5cf))
+
 # [1.10.0](https://github.com/budimirbudimir/thebudimir/compare/v1.9.1...v1.10.0) (2026-02-01)
 
 
