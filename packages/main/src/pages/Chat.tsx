@@ -1,5 +1,6 @@
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Checkbox,
@@ -8,9 +9,9 @@ import {
   Group,
   Image,
   Loader,
+  Modal,
   Paper,
   ScrollArea,
-  Select,
   Stack,
   Text,
   TextInput,
@@ -60,6 +61,7 @@ export default function Chat() {
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedService, setSelectedService] = useState<'ollama' | 'ghmodels'>('ghmodels');
   const [imageWarning, setImageWarning] = useState<string | null>(null);
+  const [isModelModalOpen, setIsModelModalOpen] = useState(false);
   const viewport = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We want to scroll when messages change
@@ -228,6 +230,29 @@ export default function Chat() {
     setError(null);
   };
 
+  const getSelectedModelInfo = () => {
+    return (
+      availableModels.ollama.find((m) => m.id === selectedModel) ||
+      availableModels.ghmodels.find((m) => m.id === selectedModel)
+    );
+  };
+
+  const handleModelSelect = (model: ModelInfo, service: 'ollama' | 'ghmodels') => {
+    setSelectedModel(model.id);
+    setSelectedService(service);
+    setIsModelModalOpen(false);
+  };
+
+  const getCapabilityColor = (capability: string) => {
+    const colorMap: Record<string, string> = {
+      vision: 'grape',
+      tools: 'blue',
+      code: 'cyan',
+      text: 'gray',
+    };
+    return colorMap[capability.toLowerCase()] || 'gray';
+  };
+
   return (
     <Container size="lg" py="xl">
       <Group justify="space-between" mb="xl">
@@ -369,36 +394,139 @@ export default function Chat() {
               </Button>
             </Group>
           )}
+          <Modal
+            opened={isModelModalOpen}
+            onClose={() => setIsModelModalOpen(false)}
+            title={<Text fw={700} size="lg">Select AI Model</Text>}
+            size="lg"
+          >
+            <Stack gap="md">
+              {availableModels.ghmodels.length > 0 && (
+                <Box>
+                  <Text fw={600} mb="sm" c="dimmed" size="sm">
+                    GitHub Models (Cloud)
+                  </Text>
+                  <Stack gap="xs">
+                    {availableModels.ghmodels.map((model) => (
+                      <Paper
+                        key={model.id}
+                        p="md"
+                        withBorder
+                        style={{
+                          cursor: 'pointer',
+                          borderColor: selectedModel === model.id ? 'var(--mantine-color-blue-6)' : undefined,
+                          borderWidth: selectedModel === model.id ? 2 : 1,
+                        }}
+                        onClick={() => handleModelSelect(model, 'ghmodels')}
+                      >
+                        <Group justify="space-between" mb="xs">
+                          <Text fw={600}>{model.name}</Text>
+                          {selectedModel === model.id && (
+                            <Badge color="blue" variant="filled" size="sm">
+                              Selected
+                            </Badge>
+                          )}
+                        </Group>
+                        {model.description && (
+                          <Text size="sm" c="dimmed" mb="xs">
+                            {model.description}
+                          </Text>
+                        )}
+                        {model.capabilities && model.capabilities.length > 0 && (
+                          <Group gap="xs">
+                            {model.capabilities.map((cap) => (
+                              <Badge
+                                key={cap}
+                                color={getCapabilityColor(cap)}
+                                variant="light"
+                                size="sm"
+                              >
+                                {cap}
+                              </Badge>
+                            ))}
+                          </Group>
+                        )}
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+
+              {availableModels.ollama.length > 0 && (
+                <Box>
+                  <Text fw={600} mb="sm" c="dimmed" size="sm">
+                    Ollama (Local)
+                  </Text>
+                  <Stack gap="xs">
+                    {availableModels.ollama.map((model) => (
+                      <Paper
+                        key={model.id}
+                        p="md"
+                        withBorder
+                        style={{
+                          cursor: 'pointer',
+                          borderColor: selectedModel === model.id ? 'var(--mantine-color-blue-6)' : undefined,
+                          borderWidth: selectedModel === model.id ? 2 : 1,
+                        }}
+                        onClick={() => handleModelSelect(model, 'ollama')}
+                      >
+                        <Group justify="space-between" mb="xs">
+                          <Text fw={600}>{model.name}</Text>
+                          {selectedModel === model.id && (
+                            <Badge color="blue" variant="filled" size="sm">
+                              Selected
+                            </Badge>
+                          )}
+                        </Group>
+                        {model.description && (
+                          <Text size="sm" c="dimmed" mb="xs">
+                            {model.description}
+                          </Text>
+                        )}
+                        {model.capabilities && model.capabilities.length > 0 && (
+                          <Group gap="xs">
+                            {model.capabilities.map((cap) => (
+                              <Badge
+                                key={cap}
+                                color={getCapabilityColor(cap)}
+                                variant="light"
+                                size="sm"
+                              >
+                                {cap}
+                              </Badge>
+                            ))}
+                          </Group>
+                        )}
+                        {model.size && (
+                          <Text size="xs" c="dimmed" mt="xs">
+                            Size: {(model.size / 1024 / 1024 / 1024).toFixed(2)} GB
+                          </Text>
+                        )}
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+
+              {availableModels.ghmodels.length === 0 && availableModels.ollama.length === 0 && (
+                <Text c="dimmed" ta="center" py="xl">
+                  No models available. Please check your configuration.
+                </Text>
+              )}
+            </Stack>
+          </Modal>
+
           <form onSubmit={handleSubmit}>
             <Group gap="sm" mb="sm">
-              <Select
-                placeholder="Select model"
-                value={selectedModel}
-                onChange={(value) => {
-                  if (value) {
-                    setSelectedModel(value);
-                    // Determine service based on which list contains the model
-                    if (availableModels.ollama.some((m) => m.id === value)) {
-                      setSelectedService('ollama');
-                    } else {
-                      setSelectedService('ghmodels');
-                    }
-                  }
-                }}
-                data={[
-                  ...availableModels.ghmodels.map((m) => ({
-                    value: m.id,
-                    label: `${m.name} (GitHub Models)`,
-                  })),
-                  ...availableModels.ollama.map((m) => ({
-                    value: m.id,
-                    label: `${m.name} (Ollama)`,
-                  })),
-                ]}
+              <Button
+                onClick={() => setIsModelModalOpen(true)}
                 disabled={isLoading}
-                style={{ minWidth: '250px' }}
+                variant="default"
                 size="sm"
-              />
+                style={{ minWidth: '250px' }}
+              >
+                {getSelectedModelInfo()?.name || 'Select Model'}
+              </Button>
               <Checkbox
                 label="Enable web search"
                 checked={useWebSearch}
