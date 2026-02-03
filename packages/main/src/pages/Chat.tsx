@@ -18,6 +18,10 @@ import {
 } from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -287,9 +291,39 @@ export default function Chat() {
                       style={{ maxHeight: '300px' }}
                     />
                   )}
-                  <Text style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
-                    {message.content}
-                  </Text>
+                  <Box
+                    style={{
+                      '& a': {
+                        color: message.role === 'user' ? '#60a5fa' : '#2563eb',
+                        textDecoration: 'underline',
+                      },
+                      '& code': {
+                        backgroundColor: message.role === 'user' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontSize: '0.9em',
+                      },
+                      '& pre': {
+                        backgroundColor: '#1f2937',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        overflow: 'auto',
+                        marginTop: '8px',
+                        marginBottom: '8px',
+                      },
+                      '& pre code': {
+                        backgroundColor: 'transparent',
+                        padding: '0',
+                      },
+                    }}
+                  >
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeHighlight]}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </Box>
                 </Paper>
               </Box>
             ))}
