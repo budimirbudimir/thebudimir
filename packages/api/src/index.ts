@@ -1,4 +1,6 @@
 import { Database } from 'bun:sqlite';
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import * as mistral from './services/mistral';
 import * as ollama from './services/ollama';import * as Sentry from "@sentry/bun";
 
@@ -32,6 +34,10 @@ interface ShoppingListItem {
 
 // Initialize SQLite database
 const dbPath = process.env.DB_PATH || './data/shopping.db';
+// Create directory if using file-based database
+if (dbPath !== ':memory:') {
+  mkdirSync(dirname(dbPath), { recursive: true });
+}
 const db = new Database(dbPath, { create: true });
 
 // Create shopping_list table if it doesn't exist
