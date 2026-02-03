@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 describe('API Server', () => {
   test('environment variables have defaults', () => {
-    const PORT = process.env.PORT || 3000;
+    const PORT = Number(process.env.PORT) || 3000;
     expect(PORT).toBeDefined();
     expect(typeof PORT).toBe('number');
   });
@@ -244,7 +244,7 @@ describe('Error Handling', () => {
   });
 
   test('handles non-Error instances', () => {
-    const error = 'String error';
+    const error: unknown = 'String error';
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
     expect(errorMessage).toBe('Unknown error occurred');

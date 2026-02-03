@@ -19,6 +19,9 @@ CMD ["bun", "--watch", "src/index.ts"]
 FROM base AS production
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Create data directory for SQLite database
+RUN mkdir -p /app/data
+VOLUME ["/app/data"]
 EXPOSE 3000
 ENV NODE_ENV=production
 CMD ["bun", "src/index.ts"]

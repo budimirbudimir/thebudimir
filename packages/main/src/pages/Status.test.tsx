@@ -43,7 +43,7 @@ describe('Status Page', () => {
           status: 200,
           statusText: 'OK',
         } as Response)
-      );
+      ) as any;
 
       const service: ServiceStatus = {
         name: 'GitHub Models (AI)',
@@ -88,7 +88,7 @@ describe('Status Page', () => {
           status: 503,
           statusText: 'Service Unavailable',
         } as Response)
-      );
+      ) as any;
 
       const service: ServiceStatus = {
         name: 'GitHub Models (AI)',
@@ -128,7 +128,7 @@ describe('Status Page', () => {
           status: 500,
           statusText: 'Internal Server Error',
         } as Response)
-      );
+      ) as any;
 
       const service: ServiceStatus = {
         name: 'GitHub Models (AI)',
@@ -157,7 +157,7 @@ describe('Status Page', () => {
     });
 
     test('detects offline service with network error', async () => {
-      global.fetch = mock(() => Promise.reject(new Error('Network error')));
+      global.fetch = mock(() => Promise.reject(new Error('Network error'))) as any;
 
       const service: ServiceStatus = {
         name: 'GitHub Models (AI)',
@@ -201,7 +201,7 @@ describe('Status Page', () => {
           status: 200,
           statusText: 'OK',
         } as Response)
-      );
+      ) as any;
 
       const service: ServiceStatus = {
         name: 'API Server',
@@ -399,8 +399,10 @@ describe('Status Page', () => {
       };
 
       expect(service.lastChecked).toBe(timestamp);
-      const date = new Date(service.lastChecked);
-      expect(date.toLocaleTimeString()).toBeTruthy();
+      if (service.lastChecked) {
+        const date = new Date(service.lastChecked);
+        expect(date.toLocaleTimeString()).toBeTruthy();
+      }
     });
   });
 

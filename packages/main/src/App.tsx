@@ -3,6 +3,7 @@ import { ActionIcon, useMantineColorScheme } from '@mantine/core';
 import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 import Chat from './pages/Chat';
 import Home from './pages/Home';
+import ShoppingList from './pages/ShoppingList';
 import Status from './pages/Status';
 import './App.css';
 
@@ -44,6 +45,9 @@ const App = () => (
           </Link>
           <Link to="/chat" className="nav-link">
             Chat
+          </Link>
+          <Link to="/shopping-list" className="nav-link">
+            Shopping List
           </Link>
         </SignedIn>
         <div className="user-button-wrapper">
@@ -88,6 +92,14 @@ const App = () => (
           element={
             <ProtectedRoute>
               <Chat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shopping-list"
+          element={
+            <ProtectedRoute>
+              <ShoppingList />
             </ProtectedRoute>
           }
         />
