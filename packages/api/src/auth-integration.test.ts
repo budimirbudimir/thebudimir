@@ -1,5 +1,13 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 
+interface ErrorResponse {
+  error: string;
+}
+
+interface HealthResponse {
+  status: string;
+}
+
 describe('API Authentication Integration', () => {
   const API_URL = 'http://localhost:3000';
 
@@ -23,7 +31,7 @@ describe('API Authentication Integration', () => {
       });
 
       expect(response.status).toBe(401);
-      const data = await response.json();
+      const data = await response.json() as ErrorResponse;
       expect(data.error).toBe('Unauthorized');
     } catch (error) {
       console.log('⏭️  Skipping test - API server not running');
@@ -50,7 +58,7 @@ describe('API Authentication Integration', () => {
       });
 
       expect(response.status).toBe(401);
-      const data = await response.json();
+      const data = await response.json() as ErrorResponse;
       expect(data.error).toBe('Unauthorized');
     } catch (error) {
       console.log('⏭️  Skipping test - API server not running');
@@ -103,7 +111,7 @@ describe('API Authentication Integration', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as HealthResponse;
       expect(data.status).toBe('ok');
     } catch (error) {
       console.log('⏭️  Skipping test - API server not running');
