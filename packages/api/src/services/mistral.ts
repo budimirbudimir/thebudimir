@@ -52,25 +52,19 @@ export interface MistralModel {
 // GitHub Models available models (verified via GitHub Models Marketplace)
 const AVAILABLE_MODELS: MistralModel[] = [
   {
-    id: 'azureml-mistral/mistral-small-2503',
+    id: 'mistral-ai/mistral-small-2503',
     name: 'Mistral Small 3.1',
     description: 'Enhanced Mistral Small 3 with multimodal capabilities and a 128k context length',
     capabilities: ['text', 'tools'],
   },
   {
-    id: 'azureml-mistral/mistral-medium-2505',
+    id: 'mistral-ai/mistral-medium-2505',
     name: 'Mistral Medium 3 (25.05)',
     description: 'Advanced LLM with state-of-the-art reasoning, knowledge, coding and vision capabilities',
     capabilities: ['text', 'tools', 'vision'],
   },
   {
-    id: 'azureml-mistral/Ministral-3B',
-    name: 'Ministral-3B',
-    description: 'State-of-the-art Small Language Model optimized for edge computing and on-device applications',
-    capabilities: ['text'],
-  },
-  {
-    id: 'azureml-mistral/Codestral-2501',
+    id: 'mistral-ai/Codestral-2501',
     name: 'Codestral 25.01',
     description: 'Designed for code generation, supporting 80+ programming languages',
     capabilities: ['text', 'code'],

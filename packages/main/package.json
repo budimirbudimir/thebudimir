@@ -16,9 +16,13 @@
     "@clerk/clerk-react": "^5.60.0",
     "@mantine/core": "^8.3.13",
     "@mantine/hooks": "^8.3.13",
+    "highlight.js": "^11.11.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.0"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.13.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",
