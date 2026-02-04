@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/budimirbudimir/thebudimir/compare/v1.13.0...v1.14.0) (2026-02-03)
+
+
+### Features
+
+* revamp model selector + tunnel ([#44](https://github.com/budimirbudimir/thebudimir/issues/44)) ([5238d5e](https://github.com/budimirbudimir/thebudimir/commit/5238d5ef176520b74e2ac5a6c3aebb55ca439288))
+
 # [1.13.0](https://github.com/budimirbudimir/thebudimir/compare/v1.12.0...v1.13.0) (2026-02-03)
 
 
