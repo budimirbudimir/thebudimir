@@ -237,6 +237,16 @@ export default function Chat() {
     );
   };
 
+  const selectedModelSupportsVision = () => {
+    const model = getSelectedModelInfo();
+    return model?.capabilities?.includes('vision') ?? false;
+  };
+
+  const selectedModelSupportsTools = () => {
+    const model = getSelectedModelInfo();
+    return model?.capabilities?.includes('tools') ?? false;
+  };
+
   const handleModelSelect = (model: ModelInfo, service: 'ollama' | 'ghmodels') => {
     setSelectedModel(model.id);
     setSelectedService(service);
@@ -245,10 +255,11 @@ export default function Chat() {
 
   const getCapabilityColor = (capability: string) => {
     const colorMap: Record<string, string> = {
-      vision: 'grape',
-      tools: 'blue',
+      vision: 'grape',      multimodal: 'orange',      tools: 'blue',
+      thinking: 'pink',
       code: 'cyan',
       text: 'gray',
+      embedding: 'teal',
     };
     return colorMap[capability.toLowerCase()] || 'gray';
   };
@@ -545,34 +556,40 @@ export default function Chat() {
               >
                 {getSelectedModelInfo()?.name || 'Select Model'}
               </Button>
-              <Checkbox
-                label="Enable web search"
-                checked={useWebSearch}
-                onChange={(e) => setUseWebSearch(e.currentTarget.checked)}
-                disabled={isLoading}
-                size="sm"
-              />
-              <FileButton
-                onChange={handleImageSelect}
-                accept="image/png,image/jpeg,image/jpg,image/webp"
-                disabled={isLoading}
-              >
-                {(props) => (
-                  <Button {...props} size="xs" variant="light" disabled={isLoading}>
-                    📷 Attach Image
-                  </Button>
-                )}
-              </FileButton>
-              {selectedImage && (
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="red"
-                  onClick={clearImage}
+              {selectedModelSupportsTools() && (
+                <Checkbox
+                  label="Enable web search"
+                  checked={useWebSearch}
+                  onChange={(e) => setUseWebSearch(e.currentTarget.checked)}
                   disabled={isLoading}
-                >
-                  ✕ Remove
-                </Button>
+                  size="sm"
+                />
+              )}
+              {selectedModelSupportsVision() && (
+                <>
+                  <FileButton
+                    onChange={handleImageSelect}
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    disabled={isLoading}
+                  >
+                    {(props) => (
+                      <Button {...props} size="xs" variant="light" disabled={isLoading}>
+                        📷 Attach Image
+                      </Button>
+                    )}
+                  </FileButton>
+                  {selectedImage && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="red"
+                      onClick={clearImage}
+                      disabled={isLoading}
+                    >
+                      ✕ Remove
+                    </Button>
+                  )}
+                </>
               )}
             </Group>
             {imageWarning && (
