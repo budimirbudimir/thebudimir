@@ -112,7 +112,7 @@ export default function Status() {
   const getStatusColor = (status: ServiceStatus['status']) => {
     switch (status) {
       case 'online':
-        return 'green';
+        return 'violet';
       case 'offline':
         return 'red';
       default:
@@ -131,7 +131,15 @@ export default function Status() {
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
         {services.map((service) => (
-          <Paper key={service.name} shadow="sm" p="lg" withBorder>
+          <Paper 
+            key={service.name} 
+            shadow="sm" 
+            p="lg" 
+            withBorder
+            style={{
+              borderColor: service.status === 'online' ? '#7c3aed' : (service.status === 'offline' ? '#ef4444' : undefined),
+            }}
+          >
             <Group justify="space-between" mb="md">
               <Title order={3}>{service.name}</Title>
               <Badge color={getStatusColor(service.status)} variant="filled">
@@ -170,7 +178,7 @@ export default function Status() {
               )}
 
               {service.error && (
-                <Paper p="sm" bg="red.0" withBorder>
+                <Paper p="sm" withBorder style={{ backgroundColor: '#1a0d0d', borderColor: '#7f1d1d' }}>
                   <Text size="sm" c="red.9" fw={500}>
                     Error:
                   </Text>
@@ -199,7 +207,20 @@ export default function Status() {
               </Group>
             </Stack>
 
-            <Button fullWidth mt="md" onClick={handleRefresh} variant="light">
+            <Button 
+              fullWidth 
+              mt="md" 
+              onClick={handleRefresh} 
+              variant="light"
+              style={{
+                background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                borderColor: '#7c3aed',
+                color: '#a855f7',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%)',
+                },
+              }}
+            >
               Refresh Status
             </Button>
           </Paper>

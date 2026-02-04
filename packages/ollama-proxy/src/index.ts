@@ -30,6 +30,8 @@ console.log(`   Auth: ${isAuthEnabled() ? 'Enabled ✅' : 'Disabled ⚠️'}`);
 
 const server = Bun.serve({
   port: PROXY_PORT,
+  // Allow long-running LLM requests (255s = ~4 minutes, max allowed)
+  idleTimeout: 255,
   // Self-signed certificate (you'll need to accept it once in browser)
   tls: {
     cert: Bun.file('./certs/cert.pem'),

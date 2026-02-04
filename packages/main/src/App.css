@@ -21,7 +21,7 @@
 }
 
 .nav-link {
-  color: light-dark(var(--mantine-color-blue-7), #61dafb);
+  color: light-dark(#7c3aed, #a855f7);
   text-decoration: none;
   font-weight: 500;
   transition: opacity 0.2s;
@@ -29,6 +29,7 @@
 
 .nav-link:hover {
   opacity: 0.8;
+  color: light-dark(#6d28d9, #c084fc);
 }
 
 .App {
