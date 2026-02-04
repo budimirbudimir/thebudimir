@@ -88,9 +88,17 @@ const shoppingListDb = {
 };
 
 function getCorsHeaders(origin: string | null): Record<string, string> {
-  const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
+  // Normalize origins by removing trailing slashes for comparison
+  const normalizedOrigin = origin?.replace(/\/$/, '');
+  const normalizedAllowed = ALLOWED_ORIGINS.map(o => o?.replace(/\/$/, ''));
+  const isAllowed = normalizedOrigin && normalizedAllowed.includes(normalizedOrigin);
+  
+  if (!isAllowed && origin) {
+    console.warn(`CORS: Origin not allowed: ${origin}. Allowed origins:`, ALLOWED_ORIGINS);
+  }
+  
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : '',
+    'Access-Control-Allow-Origin': isAllowed ? origin as string : '',
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400', // 24 hours
