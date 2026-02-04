@@ -150,6 +150,8 @@ const server = Bun.serve({
               name: m.name,
               size: m.size,
               modifiedAt: m.modifiedAt,
+              description: m.description,
+              capabilities: m.capabilities,
             })),
             ghmodels: mistralModels.map((m) => ({
               id: m.id,
