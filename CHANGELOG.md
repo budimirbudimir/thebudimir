@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/budimirbudimir/thebudimir/compare/v1.14.0...v1.15.0) (2026-02-04)
+
+
+### Features
+
+* redesign ui + tunnel fix + auth fix ([#45](https://github.com/budimirbudimir/thebudimir/issues/45)) ([427ebde](https://github.com/budimirbudimir/thebudimir/commit/427ebde30497e703e849605f68cf6e1687db8554))
+
 # [1.14.0](https://github.com/budimirbudimir/thebudimir/compare/v1.13.0...v1.14.0) (2026-02-03)
 
 
