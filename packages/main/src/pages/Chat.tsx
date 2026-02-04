@@ -299,8 +299,11 @@ export default function Chat() {
               >
                 <Paper
                   p="md"
-                  bg={message.role === 'user' ? 'blue.6' : 'gray.1'}
-                  c={message.role === 'user' ? 'white' : 'black'}
+                  bg={message.role === 'user' ? '#7c3aed' : '#1e1b2e'}
+                  c="white"
+                  style={{
+                    border: message.role === 'assistant' ? '1px solid #4c1d95' : 'none',
+                  }}
                 >
                   <Group justify="space-between" mb="xs">
                     <Text size="xs" fw={700} tt="uppercase">
@@ -323,17 +326,23 @@ export default function Chat() {
                   <Box
                     style={{
                       '& a': {
-                        color: message.role === 'user' ? '#60a5fa' : '#2563eb',
+                        color: '#c084fc',
                         textDecoration: 'underline',
+                        fontWeight: 500,
+                      },
+                      '& a:hover': {
+                        color: '#e9d5ff',
                       },
                       '& code': {
-                        backgroundColor: message.role === 'user' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+                        backgroundColor: 'rgba(124, 58, 237, 0.15)',
+                        color: '#c084fc',
                         padding: '2px 6px',
                         borderRadius: '4px',
                         fontSize: '0.9em',
                       },
                       '& pre': {
-                        backgroundColor: '#1f2937',
+                        backgroundColor: '#0f0e1a',
+                        border: '1px solid #4c1d95',
                         padding: '12px',
                         borderRadius: '8px',
                         overflow: 'auto',
@@ -342,6 +351,7 @@ export default function Chat() {
                       },
                       '& pre code': {
                         backgroundColor: 'transparent',
+                        color: '#e9d5ff',
                         padding: '0',
                       },
                     }}
@@ -359,7 +369,7 @@ export default function Chat() {
 
             {isLoading && (
               <Box style={{ maxWidth: '80%' }}>
-                <Paper p="md" bg="gray.1">
+                <Paper p="md" bg="#1e1b2e" style={{ border: '1px solid #4c1d95' }}>
                   <Group justify="space-between" mb="xs">
                     <Text size="xs" fw={700} tt="uppercase">
                       Assistant
@@ -414,15 +424,19 @@ export default function Chat() {
                         withBorder
                         style={{
                           cursor: 'pointer',
-                          borderColor: selectedModel === model.id ? 'var(--mantine-color-blue-6)' : undefined,
+                          borderColor: selectedModel === model.id ? '#a855f7' : undefined,
                           borderWidth: selectedModel === model.id ? 2 : 1,
+                          background: selectedModel === model.id 
+                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)'
+                            : undefined,
+                          transition: 'all 0.2s ease',
                         }}
                         onClick={() => handleModelSelect(model, 'ghmodels')}
                       >
                         <Group justify="space-between" mb="xs">
                           <Text fw={600}>{model.name}</Text>
                           {selectedModel === model.id && (
-                            <Badge color="blue" variant="filled" size="sm">
+                            <Badge color="violet" variant="filled" size="sm">
                               Selected
                             </Badge>
                           )}
@@ -465,15 +479,19 @@ export default function Chat() {
                         withBorder
                         style={{
                           cursor: 'pointer',
-                          borderColor: selectedModel === model.id ? 'var(--mantine-color-blue-6)' : undefined,
+                          borderColor: selectedModel === model.id ? '#a855f7' : undefined,
                           borderWidth: selectedModel === model.id ? 2 : 1,
+                          background: selectedModel === model.id 
+                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)'
+                            : undefined,
+                          transition: 'all 0.2s ease',
                         }}
                         onClick={() => handleModelSelect(model, 'ollama')}
                       >
                         <Group justify="space-between" mb="xs">
                           <Text fw={600}>{model.name}</Text>
                           {selectedModel === model.id && (
-                            <Badge color="blue" variant="filled" size="sm">
+                            <Badge color="violet" variant="filled" size="sm">
                               Selected
                             </Badge>
                           )}
@@ -581,12 +599,27 @@ export default function Chat() {
                 onChange={(e) => setInput(e.currentTarget.value)}
                 disabled={isLoading}
                 size="md"
+                styles={{
+                  input: {
+                    borderColor: '#7c3aed',
+                    '&:focus': {
+                      borderColor: '#a855f7',
+                      boxShadow: '0 0 0 2px rgba(124, 58, 237, 0.2)',
+                    },
+                  },
+                }}
               />
               <Button
                 type="submit"
                 disabled={isLoading || (!input.trim() && !selectedImage)}
                 size="md"
                 leftSection={isLoading ? <Loader size="xs" color="white" /> : undefined}
+                style={{
+                  background: isLoading || (!input.trim() && !selectedImage) 
+                    ? '#4c1d95' 
+                    : 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+                  border: 'none',
+                }}
               >
                 {isLoading ? 'Sending...' : 'Send'}
               </Button>

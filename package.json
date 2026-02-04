@@ -9,6 +9,7 @@
     "@semantic-release/git": "^10.0.1",
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",
+    "localtunnel": "^2.0.2",
     "semantic-release": "^25.0.2",
     "typescript": "^5.9.3"
   },
@@ -28,7 +29,7 @@
     "test:api": "bun run --filter @thebudimir/api test",
     "proxy:start": "bun run --filter @thebudimir/ollama-proxy start",
     "proxy:setup": "bun run --filter @thebudimir/ollama-proxy setup",
-    "tunnel:start": "./scripts/localtunnel-setup.sh",
+    "tunnel:start": "export $(grep -v '^#' .env | grep TUNNEL_SUBDOMAIN | xargs) && node ./scripts/tunnel-node.js",
     "lint": "biome lint packages/",
     "format": "biome format --write packages/",
     "check": "biome check --write packages/",

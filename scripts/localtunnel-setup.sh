@@ -3,6 +3,18 @@
 # Localtunnel Setup for Ollama
 # This script exposes your local Ollama instance to the internet via localtunnel
 
+# Load environment variables from root .env if it exists
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/../.env"
+
+if [ -f "$ENV_FILE" ]; then
+    echo "📝 Loading environment from $ENV_FILE"
+    # Load TUNNEL_SUBDOMAIN from .env file
+    set -a
+    source <(grep -v '^#' "$ENV_FILE" | grep TUNNEL_SUBDOMAIN)
+    set +a
+fi
+
 echo "🚇 Starting Localtunnel for Ollama Proxy..."
 echo ""
 echo "Prerequisites:"
@@ -23,13 +35,13 @@ SUBDOMAIN="${TUNNEL_SUBDOMAIN:-${1:-}}"
 if [ -n "$SUBDOMAIN" ]; then
     echo "🔗 Starting tunnel with custom subdomain: $SUBDOMAIN"
     echo "   URL will be: https://$SUBDOMAIN.loca.lt"
-    echo "   Tunneling: localhost:8443 (Ollama Proxy)"
-    lt --port 8443 --subdomain "$SUBDOMAIN"
+    echo "   Tunneling: localhost:11434 (Ollama HTTP)"
+    lt --port 11434 --subdomain "$SUBDOMAIN"
 else
     echo "🔗 Starting tunnel with random subdomain..."
     echo "   Tip: Set TUNNEL_SUBDOMAIN env var or pass as argument"
     echo "   Example: TUNNEL_SUBDOMAIN=mysubdomain bun run tunnel:start"
-    lt --port 8443
+    lt --port 11434
 fi
 
 echo ""
