@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/budimirbudimir/thebudimir/compare/v1.15.1...v1.16.0) (2026-02-04)
+
+
+### Features
+
+* add some model swag ([#48](https://github.com/budimirbudimir/thebudimir/issues/48)) ([41000bc](https://github.com/budimirbudimir/thebudimir/commit/41000bcc54b0c6ce872dfc867f30a0691a0062e0))
+
 ## [1.15.1](https://github.com/budimirbudimir/thebudimir/compare/v1.15.0...v1.15.1) (2026-02-04)
 
 
