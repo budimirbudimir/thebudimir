@@ -1,10 +1,8 @@
-import { Database } from 'bun:sqlite';
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
 import * as mistral from './services/mistral';
 import * as ollama from './services/ollama';
 import { isAuthEnabled, verifyToken } from './auth';
 import * as Sentry from "@sentry/bun";
+import { db, initDb } from './db';
 
 Sentry.init({
   dsn: "https://af687efb7802278d39c8f71712f7757a@o4510818627289088.ingest.de.sentry.io/4510818639741008",
@@ -23,7 +21,7 @@ const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL, // Production domain from env
 ].filter(Boolean);
 
-// Shopping List Storage - SQLite Database
+// Shopping List Storage
 interface ShoppingListItem {
   id: string;
   text: string;
@@ -34,56 +32,34 @@ interface ShoppingListItem {
   createdAt: string;
 }
 
-// Initialize SQLite database
-const dbPath = process.env.DB_PATH || './data/shopping.db';
-// Create directory if using file-based database
-if (dbPath !== ':memory:') {
-  mkdirSync(dirname(dbPath), { recursive: true });
-}
-const db = new Database(dbPath, { create: true });
-
-// Create shopping_list table if it doesn't exist
-db.run(`
-  CREATE TABLE IF NOT EXISTS shopping_list (
-    id TEXT PRIMARY KEY,
-    text TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    user_name TEXT NOT NULL,
-    created_at TEXT NOT NULL
-  )
-`);
-
-// Database helper functions
+// Database helper functions (async for libSQL)
 const shoppingListDb = {
-  getAll(): ShoppingListItem[] {
-    const rows = db.query('SELECT * FROM shopping_list ORDER BY created_at DESC').all() as Array<{
-      id: string;
-      text: string;
-      user_id: string;
-      user_name: string;
-      created_at: string;
-    }>;
-    return rows.map((row) => ({
-      id: row.id,
-      text: row.text,
+  async getAll(): Promise<ShoppingListItem[]> {
+    const result = await db.execute('SELECT * FROM shopping_list ORDER BY created_at DESC');
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      text: row.text as string,
       addedBy: {
-        userId: row.user_id,
-        userName: row.user_name,
+        userId: row.user_id as string,
+        userName: row.user_name as string,
       },
-      createdAt: row.created_at,
+      createdAt: row.created_at as string,
     }));
   },
 
-  add(item: ShoppingListItem): void {
-    db.run(
-      'INSERT INTO shopping_list (id, text, user_id, user_name, created_at) VALUES (?, ?, ?, ?, ?)',
-      [item.id, item.text, item.addedBy.userId, item.addedBy.userName, item.createdAt]
-    );
+  async add(item: ShoppingListItem): Promise<void> {
+    await db.execute({
+      sql: 'INSERT INTO shopping_list (id, text, user_id, user_name, created_at) VALUES (?, ?, ?, ?, ?)',
+      args: [item.id, item.text, item.addedBy.userId, item.addedBy.userName, item.createdAt],
+    });
   },
 
-  delete(id: string): boolean {
-    const result = db.run('DELETE FROM shopping_list WHERE id = ?', [id]);
-    return result.changes > 0;
+  async delete(id: string): Promise<boolean> {
+    const result = await db.execute({
+      sql: 'DELETE FROM shopping_list WHERE id = ?',
+      args: [id],
+    });
+    return result.rowsAffected > 0;
   },
 };
 
@@ -274,7 +250,7 @@ const server = Bun.serve({
     // GET /v1/shopping-list - Retrieve all items
     if (url.pathname === '/v1/shopping-list' && req.method === 'GET') {
       try {
-        const items = shoppingListDb.getAll();
+        const items = await shoppingListDb.getAll();
         return Response.json(
           { items },
           { headers: corsHeaders }
@@ -324,7 +300,7 @@ const server = Bun.serve({
           createdAt: new Date().toISOString(),
         };
 
-        shoppingListDb.add(newItem);
+        await shoppingListDb.add(newItem);
 
         return Response.json(
           { item: newItem },
@@ -352,7 +328,7 @@ const server = Bun.serve({
           );
         }
 
-        const deleted = shoppingListDb.delete(itemId);
+        const deleted = await shoppingListDb.delete(itemId);
 
         if (!deleted) {
           return Response.json(
@@ -381,7 +357,9 @@ const server = Bun.serve({
   },
 });
 
+// Initialize database and start server
+await initDb();
+
 console.log(`🚀 API server running on http://localhost:${server.port}`);
 console.log(`📍 Health check: http://localhost:${server.port}/api/v1/status`);
 console.log(`🤖 AI Service: ${USE_LOCAL_MODEL ? 'Ollama (local)' : 'GitHub Models'}`);
-console.log(`💾 Database: ${dbPath}`);
