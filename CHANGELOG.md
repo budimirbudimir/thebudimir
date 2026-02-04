@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/budimirbudimir/thebudimir/compare/v1.15.0...v1.15.1) (2026-02-04)
+
+
+### Bug Fixes
+
+* add debugging for api to see the models issue ([#46](https://github.com/budimirbudimir/thebudimir/issues/46)) ([1e824d6](https://github.com/budimirbudimir/thebudimir/commit/1e824d63703325581f32e6be1dc131a03d8d6b65))
+
 # [1.15.0](https://github.com/budimirbudimir/thebudimir/compare/v1.14.0...v1.15.0) (2026-02-04)
 
 
