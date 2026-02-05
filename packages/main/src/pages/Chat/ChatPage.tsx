@@ -14,6 +14,7 @@ import {
   Paper,
   ScrollArea,
   SegmentedControl,
+  Select,
   Stack,
   Text,
   TextInput,
@@ -130,6 +131,8 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useWebSearch, setUseWebSearch] = useState(false);
+  const [chatMode, setChatMode] = useState<'single' | 'team'>('single');
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [availableModels, setAvailableModels] = useState<ModelsResponse>({
@@ -279,44 +282,46 @@ export default function Chat() {
     e.preventDefault();
     if ((!input.trim() && !selectedImage) || isLoading) return;
 
+    const userMessageContent = input.trim() || 'What do you see in this image?';
+
     const userMessage: Message = {
       role: 'user',
-      content: input.trim() || 'What do you see in this image?',
+      content: userMessageContent,
       timestamp: new Date().toISOString(),
       imageUrl: imagePreview || undefined, // Use base64 data URL directly
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
-    const imageDataToSend = imagePreview; // Store before clearing
+    const imageDataToSend = chatMode === 'single' ? imagePreview : null; // Store before clearing
     clearImage();
     setIsLoading(true);
     setError(null);
 
-    // Create conversation if this is the first message (text only - images not persisted)
+    // Create conversation if this is the first message (single-agent, text only)
     let convId = currentConversationId;
     const token = await getToken();
-    if (!convId && !imageDataToSend && token) {
+    if (chatMode === 'single' && !convId && !imageDataToSend && token) {
       try {
         // Auto-generate title from first message (first 50 chars)
-        const title = userMessage.content.length > 50 
-          ? `${userMessage.content.substring(0, 50)}...` 
+        const title = userMessage.content.length > 50
+          ? `${userMessage.content.substring(0, 50)}...`
           : userMessage.content;
-        
+
         const createResponse = await fetch(conversationsEndpoint, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ 
-            title, 
-            model: selectedModel, 
+          body: JSON.stringify({
+            title,
+            model: selectedModel,
             service: selectedService,
             agentId: currentAgent?.id,
           }),
         });
-        
+
         if (createResponse.ok) {
           const createData = (await createResponse.json()) as { conversation: Conversation };
           convId = createData.conversation.id;
@@ -330,15 +335,55 @@ export default function Chat() {
     }
 
     try {
-      const token = await getToken();
+      if (chatMode === 'team') {
+        if (!selectedTeamId) {
+          setError('Please select a team before running a team task.');
+          return;
+        }
+
+        const response = await fetch(`${teamsEndpoint}/${selectedTeamId}/execute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          body: JSON.stringify({ task: userMessageContent }),
+        });
+
+        const data = (await response.json()) as TeamExecuteResult & { error?: string };
+
+        if (!response.ok) {
+          const errorContent =
+            data.error ||
+            `Sorry, the team was unable to complete the task (HTTP ${response.status}).`;
+          const assistantError: Message = {
+            role: 'assistant',
+            content: errorContent,
+            timestamp: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantError]);
+        } else {
+          const header = `Team ${data.team} (coordinator: ${data.coordinator})`;
+          const body = data.response || 'Team did not return a response.';
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: `${header}\n\n${body}`,
+            timestamp: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        }
+
+        return;
+      }
+
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({
-          message: userMessage.content,
+          message: userMessageContent,
           imageData: imageDataToSend, // Send base64 data URL
           systemPrompt: 'You are a helpful assistant.',
           useWebSearch,
@@ -374,7 +419,8 @@ export default function Chat() {
       // Network or parsing errors - show as assistant message
       const errorMessage: Message = {
         role: 'assistant',
-        content: `Sorry, I couldn't connect to the server. Please check your connection and try again.`,
+        content:
+          `Sorry, I couldn't connect to the server. Please check your connection and try again.`,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -1019,14 +1065,9 @@ export default function Chat() {
       <Group justify="space-between" mb="xl">
         <Group>
           <Button onClick={handleBackToList} variant="subtle">
-            ← Back to Conversations
+            7 Back to Conversations
           </Button>
           <Title order={1}>AI Chat</Title>
-          {currentAgent && (
-            <Badge color="violet" variant="light" size="lg">
-              {currentAgent.name}
-            </Badge>
-          )}
         </Group>
         <Button component={Link} to="/" variant="subtle">
           Home
@@ -1306,11 +1347,56 @@ export default function Chat() {
                 disabled={isLoading}
                 variant="default"
                 size="sm"
-                style={{ minWidth: '250px' }}
+                style={{ minWidth: '220px' }}
               >
                 {getSelectedModelInfo()?.name || 'Select Model'}
               </Button>
-              {selectedModelSupportsTools() && (
+
+              <Select
+                placeholder="No agent (default assistant)"
+                data={[
+                  { value: '', label: 'No agent' },
+                  ...agents.map((agent) => ({ value: agent.id, label: agent.name })),
+                ]}
+                value={currentAgent?.id ?? ''}
+                onChange={(value) => {
+                  if (!value) {
+                    startNewConversation();
+                    return;
+                  }
+                  const agent = agents.find((a) => a.id === value) || null;
+                  if (agent) {
+                    startNewConversation(agent);
+                  }
+                }}
+                size="xs"
+                maw={220}
+                disabled={isLoading}
+              />
+
+              <SegmentedControl
+                value={chatMode}
+                onChange={(value) => setChatMode(value as 'single' | 'team')}
+                data={[
+                  { label: 'Single Agent', value: 'single' },
+                  { label: 'Team Task', value: 'team' },
+                ]}
+                size="xs"
+              />
+
+              {chatMode === 'team' && (
+                <Select
+                  placeholder={teams.length ? 'Select team' : 'No teams available'}
+                  data={teams.map((team) => ({ value: team.id, label: team.name }))}
+                  value={selectedTeamId}
+                  onChange={(value) => setSelectedTeamId(value)}
+                  size="xs"
+                  maw={220}
+                  disabled={teams.length === 0 || isLoading}
+                />
+              )}
+
+              {chatMode === 'single' && selectedModelSupportsTools() && (
                 <Checkbox
                   label="Enable web search"
                   checked={useWebSearch}
@@ -1319,7 +1405,8 @@ export default function Chat() {
                   size="sm"
                 />
               )}
-              {selectedModelSupportsVision() && (
+
+              {chatMode === 'single' && selectedModelSupportsVision() && (
                 <>
                   <FileButton
                     onChange={handleImageSelect}
@@ -1328,7 +1415,7 @@ export default function Chat() {
                   >
                     {(props) => (
                       <Button {...props} size="xs" variant="light" disabled={isLoading}>
-                        📷 Attach Image
+                        4f7 Attach Image
                       </Button>
                     )}
                   </FileButton>
@@ -1340,7 +1427,7 @@ export default function Chat() {
                       onClick={clearImage}
                       disabled={isLoading}
                     >
-                      ✕ Remove
+                      0 Remove
                     </Button>
                   )}
                 </>
