@@ -1,4 +1,6 @@
 import { createClient, type Client } from '@libsql/client';
+import { mkdirSync, existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 // Create database client based on environment
 // - Production: Turso Cloud
@@ -18,6 +20,13 @@ function createDbClient(): Client {
 
   // Local development: use file-based SQLite
   const localPath = process.env.DB_PATH || './data/local.db';
+  
+  // Ensure the directory exists
+  const dir = dirname(localPath);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  
   console.log(`💾 Using local SQLite database: ${localPath}`);
   return createClient({
     url: `file:${localPath}`,
