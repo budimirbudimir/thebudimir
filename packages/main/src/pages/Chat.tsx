@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Alert,
   Badge,
   Box,
@@ -32,6 +33,23 @@ interface Message {
   imageUrl?: string;
 }
 
+interface Conversation {
+  id: string;
+  title: string;
+  model?: string;
+  service?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
 interface ModelInfo {
   id: string;
   name: string;
@@ -47,6 +65,13 @@ interface ModelsResponse {
 
 export default function Chat() {
   const { getToken } = useAuth();
+  // View state
+  const [activeView, setActiveView] = useState<'list' | 'chat'>('list');
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+  
+  // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +87,16 @@ export default function Chat() {
   const [selectedService, setSelectedService] = useState<'ollama' | 'ghmodels'>('ghmodels');
   const [imageWarning, setImageWarning] = useState<string | null>(null);
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
   const viewport = useRef<HTMLDivElement>(null);
+
+  const apiBase = import.meta.env.PROD
+    ? 'https://api.thebudimir.com'
+    : 'http://localhost:3000';
+
+  const apiEndpoint = `${apiBase}/v1/chat`;
+  const modelsEndpoint = `${apiBase}/v1/models`;
+  const conversationsEndpoint = `${apiBase}/v1/conversations`;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We want to scroll when messages change
   useEffect(() => {
@@ -71,39 +105,58 @@ export default function Chat() {
     }
   }, [messages]);
 
-  const apiEndpoint = import.meta.env.PROD
-    ? 'https://api.thebudimir.com/v1/chat'
-    : 'http://localhost:3000/v1/chat';
-
-  const modelsEndpoint = import.meta.env.PROD
-    ? 'https://api.thebudimir.com/v1/models'
-    : 'http://localhost:3000/v1/models';
-
-  // Fetch available models on mount
-  // biome-ignore lint/correctness/useExhaustiveDependencies: modelsEndpoint is constant based on env
+  // Fetch conversations on mount
   useEffect(() => {
-    const fetchModels = async () => {
+    const fetchConversations = async () => {
       try {
-        const response = await fetch(modelsEndpoint);
+        const token = await getToken();
+        const response = await fetch(conversationsEndpoint, {
+          headers: {
+            ...(token && { 'Authorization': `Bearer ${token}` }),
+          },
+        });
         if (response.ok) {
-          const data = (await response.json()) as ModelsResponse;
-          setAvailableModels(data);
-
-          // Set default model
-          if (data.ghmodels.length > 0) {
-            setSelectedModel(data.ghmodels[0].id);
-            setSelectedService('ghmodels');
-          } else if (data.ollama.length > 0) {
-            setSelectedModel(data.ollama[0].id);
-            setSelectedService('ollama');
-          }
+          const data = (await response.json()) as { conversations: Conversation[] };
+          setConversations(data.conversations);
         }
       } catch (error) {
-        console.error('Failed to fetch models:', error);
+        console.error('Failed to fetch conversations:', error);
+      } finally {
+        setIsLoadingConversations(false);
       }
     };
-    fetchModels();
-  }, [modelsEndpoint]);
+    fetchConversations();
+  }, [conversationsEndpoint, getToken]);
+
+  // Fetch models when entering chat view (lazy load)
+  useEffect(() => {
+    if (activeView === 'chat' && !modelsLoaded) {
+      const fetchModels = async () => {
+        try {
+          const response = await fetch(modelsEndpoint);
+          if (response.ok) {
+            const data = (await response.json()) as ModelsResponse;
+            setAvailableModels(data);
+
+            // Set default model if none selected
+            if (!selectedModel) {
+              if (data.ghmodels.length > 0) {
+                setSelectedModel(data.ghmodels[0].id);
+                setSelectedService('ghmodels');
+              } else if (data.ollama.length > 0) {
+                setSelectedModel(data.ollama[0].id);
+                setSelectedService('ollama');
+              }
+            }
+            setModelsLoaded(true);
+          }
+        } catch (error) {
+          console.error('Failed to fetch models:', error);
+        }
+      };
+      fetchModels();
+    }
+  }, [activeView, modelsLoaded, modelsEndpoint, selectedModel]);
 
   const handleImageSelect = (file: File | null) => {
     setSelectedImage(file);
@@ -171,6 +224,37 @@ export default function Chat() {
     setIsLoading(true);
     setError(null);
 
+    // Create conversation if this is the first message (text only - images not persisted)
+    let convId = currentConversationId;
+    const token = await getToken();
+    if (!convId && !imageDataToSend && token) {
+      try {
+        // Auto-generate title from first message (first 50 chars)
+        const title = userMessage.content.length > 50 
+          ? `${userMessage.content.substring(0, 50)}...` 
+          : userMessage.content;
+        
+        const createResponse = await fetch(conversationsEndpoint, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title, model: selectedModel, service: selectedService }),
+        });
+        
+        if (createResponse.ok) {
+          const createData = (await createResponse.json()) as { conversation: Conversation };
+          convId = createData.conversation.id;
+          setCurrentConversationId(convId);
+          // Add to conversations list
+          setConversations((prev) => [createData.conversation, ...prev]);
+        }
+      } catch (err) {
+        console.error('Failed to create conversation:', err);
+      }
+    }
+
     try {
       const token = await getToken();
       const response = await fetch(apiEndpoint, {
@@ -186,6 +270,7 @@ export default function Chat() {
           useWebSearch,
           model: selectedModel,
           service: selectedService,
+          conversationId: imageDataToSend ? undefined : convId, // Don't persist image chats
         }),
       });
 
@@ -225,9 +310,68 @@ export default function Chat() {
     }
   };
 
-  const handleClear = () => {
+  const handleBackToList = () => {
+    setActiveView('list');
     setMessages([]);
+    setCurrentConversationId(null);
     setError(null);
+  };
+
+  const startNewConversation = () => {
+    setCurrentConversationId(null);
+    setMessages([]);
+    setActiveView('chat');
+  };
+
+  const openConversation = async (conversation: Conversation) => {
+    setCurrentConversationId(conversation.id);
+    setActiveView('chat');
+    
+    // Restore model/service from conversation if available
+    if (conversation.model) {
+      setSelectedModel(conversation.model);
+    }
+    if (conversation.service) {
+      setSelectedService(conversation.service as 'ollama' | 'ghmodels');
+    }
+    
+    // Load messages
+    try {
+      const token = await getToken();
+      const response = await fetch(`${conversationsEndpoint}/${conversation.id}`, {
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+      if (response.ok) {
+        const data = (await response.json()) as { conversation: Conversation; messages: ConversationMessage[] };
+        setMessages(data.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.createdAt,
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to load conversation:', error);
+    }
+  };
+
+  const deleteConversation = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const token = await getToken();
+      const response = await fetch(`${conversationsEndpoint}/${id}`, {
+        method: 'DELETE',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+      if (response.ok) {
+        setConversations((prev) => prev.filter((c) => c.id !== id));
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
   };
 
   const getSelectedModelInfo = () => {
@@ -264,12 +408,103 @@ export default function Chat() {
     return colorMap[capability.toLowerCase()] || 'gray';
   };
 
+  // Conversation List View
+  if (activeView === 'list') {
+    return (
+      <Container size="lg" py="xl">
+        <Group justify="space-between" mb="xl">
+          <Title order={1}>AI Chat</Title>
+          <Button component={Link} to="/" variant="subtle">
+            ← Back to Home
+          </Button>
+        </Group>
+
+        <Paper
+          shadow="sm"
+          p="md"
+          withBorder
+          style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}
+        >
+          <Button
+            onClick={startNewConversation}
+            size="lg"
+            mb="md"
+            style={{
+              background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+              border: 'none',
+            }}
+          >
+            + Start New Conversation
+          </Button>
+
+          <ScrollArea style={{ flex: 1 }}>
+            {isLoadingConversations ? (
+              <Box ta="center" py="xl">
+                <Loader color="violet" />
+                <Text c="dimmed" mt="sm">Loading conversations...</Text>
+              </Box>
+            ) : conversations.length === 0 ? (
+              <Box ta="center" py="xl">
+                <Text size="lg" c="dimmed">
+                  No conversations yet
+                </Text>
+                <Text size="sm" c="dimmed" mt="xs">
+                  Start a new conversation to begin chatting
+                </Text>
+              </Box>
+            ) : (
+              <Stack gap="sm">
+                {conversations.map((conversation) => (
+                  <Paper
+                    key={conversation.id}
+                    p="md"
+                    withBorder
+                    style={{
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onClick={() => openConversation(conversation)}
+                  >
+                    <Group justify="space-between">
+                      <Box style={{ flex: 1 }}>
+                        <Text fw={600} lineClamp={1}>
+                          {conversation.title}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {new Date(conversation.updatedAt).toLocaleDateString()}{' '}
+                          {new Date(conversation.updatedAt).toLocaleTimeString()}
+                        </Text>
+                      </Box>
+                      <ActionIcon
+                        color="red"
+                        variant="subtle"
+                        onClick={(e) => deleteConversation(conversation.id, e)}
+                      >
+                        ✕
+                      </ActionIcon>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+          </ScrollArea>
+        </Paper>
+      </Container>
+    );
+  }
+
+  // Chat View
   return (
     <Container size="lg" py="xl">
       <Group justify="space-between" mb="xl">
-        <Title order={1}>AI Chat</Title>
+        <Group>
+          <Button onClick={handleBackToList} variant="subtle">
+            ← Back to Conversations
+          </Button>
+          <Title order={1}>AI Chat</Title>
+        </Group>
         <Button component={Link} to="/" variant="subtle">
-          ← Back to Home
+          Home
         </Button>
       </Group>
 
@@ -402,19 +637,6 @@ export default function Chat() {
         )}
 
         <Box>
-          {messages.length > 0 && (
-            <Group justify="flex-end" mb="xs">
-              <Button
-                size="xs"
-                color="red"
-                variant="subtle"
-                onClick={handleClear}
-                disabled={isLoading}
-              >
-                Clear
-              </Button>
-            </Group>
-          )}
           <Modal
             opened={isModelModalOpen}
             onClose={() => setIsModelModalOpen(false)}

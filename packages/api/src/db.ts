@@ -46,4 +46,37 @@ export async function initDb(): Promise<void> {
       created_at TEXT NOT NULL
     )
   `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS conversations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      model TEXT,
+      service TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  // Create index for faster conversation lookups by user
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create index for faster message lookups by conversation
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)
+  `);
 }

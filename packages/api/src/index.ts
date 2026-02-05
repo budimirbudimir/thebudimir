@@ -21,6 +21,138 @@ const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL, // Production domain from env
 ].filter(Boolean);
 
+// Conversation Storage
+interface Conversation {
+  id: string;
+  userId: string;
+  title: string;
+  model?: string;
+  service?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
+// Database helper functions for conversations
+const conversationsDb = {
+  async getAllForUser(userId: string): Promise<Conversation[]> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM conversations WHERE user_id = ? ORDER BY updated_at DESC',
+      args: [userId],
+    });
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      userId: row.user_id as string,
+      title: row.title as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    }));
+  },
+
+  async getByIdForUser(id: string, userId: string): Promise<Conversation | null> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM conversations WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      userId: row.user_id as string,
+      title: row.title as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  },
+
+  async create(conversation: Conversation): Promise<void> {
+    await db.execute({
+      sql: 'INSERT INTO conversations (id, user_id, title, model, service, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [conversation.id, conversation.userId, conversation.title, conversation.model || null, conversation.service || null, conversation.createdAt, conversation.updatedAt],
+    });
+  },
+
+  async updateForUser(id: string, userId: string, updates: { title?: string; model?: string; service?: string }): Promise<boolean> {
+    const fields: string[] = ['updated_at = ?'];
+    const args: (string | null)[] = [new Date().toISOString()];
+    
+    if (updates.title !== undefined) {
+      fields.push('title = ?');
+      args.push(updates.title);
+    }
+    if (updates.model !== undefined) {
+      fields.push('model = ?');
+      args.push(updates.model);
+    }
+    if (updates.service !== undefined) {
+      fields.push('service = ?');
+      args.push(updates.service);
+    }
+    
+    args.push(id);
+    args.push(userId);
+    const result = await db.execute({
+      sql: `UPDATE conversations SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+      args,
+    });
+    return result.rowsAffected > 0;
+  },
+
+  async deleteForUser(id: string, userId: string): Promise<boolean> {
+    const result = await db.execute({
+      sql: 'DELETE FROM conversations WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    return result.rowsAffected > 0;
+  },
+
+  async getMessagesForUser(conversationId: string, userId: string): Promise<ConversationMessage[] | null> {
+    // First verify the conversation belongs to the user
+    const conv = await this.getByIdForUser(conversationId, userId);
+    if (!conv) return null;
+    
+    const result = await db.execute({
+      sql: 'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
+      args: [conversationId],
+    });
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      conversationId: row.conversation_id as string,
+      role: row.role as 'user' | 'assistant',
+      content: row.content as string,
+      createdAt: row.created_at as string,
+    }));
+  },
+
+  async addMessageForUser(message: ConversationMessage, userId: string): Promise<boolean> {
+    // First verify the conversation belongs to the user
+    const conv = await this.getByIdForUser(message.conversationId, userId);
+    if (!conv) return false;
+    
+    await db.execute({
+      sql: 'INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)',
+      args: [message.id, message.conversationId, message.role, message.content, message.createdAt],
+    });
+    // Update conversation's updated_at
+    await db.execute({
+      sql: 'UPDATE conversations SET updated_at = ? WHERE id = ?',
+      args: [message.createdAt, message.conversationId],
+    });
+    return true;
+  },
+};
+
 // Shopping List Storage
 interface ShoppingListItem {
   id: string;
@@ -109,6 +241,65 @@ const server = Bun.serve({
       );
     }
 
+    // GitHub Models status endpoint
+    if (url.pathname === '/v1/ghmodels/status' && req.method === 'GET') {
+      const isConfigured = mistral.isConfigured();
+      if (!isConfigured) {
+        return Response.json(
+          {
+            status: 'offline',
+            error: 'GH_MODELS_TOKEN not configured',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 503, headers: corsHeaders }
+        );
+      }
+      return Response.json(
+        {
+          status: 'online',
+          timestamp: new Date().toISOString(),
+        },
+        { headers: corsHeaders }
+      );
+    }
+
+    // Ollama status endpoint
+    if (url.pathname === '/v1/ollama/status' && req.method === 'GET') {
+      try {
+        const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+        const response = await fetch(`${ollamaUrl}/api/tags`, {
+          signal: AbortSignal.timeout(5000), // 5s timeout
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Ollama returned ${response.status}`);
+        }
+        
+        const data = await response.json() as { models?: Array<{ name: string }> };
+        const modelCount = data.models?.length || 0;
+        
+        return Response.json(
+          {
+            status: 'online',
+            url: ollamaUrl,
+            models: modelCount,
+            timestamp: new Date().toISOString(),
+          },
+          { headers: corsHeaders }
+        );
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return Response.json(
+          {
+            status: 'offline',
+            error: errorMessage,
+            timestamp: new Date().toISOString(),
+          },
+          { status: 503, headers: corsHeaders }
+        );
+      }
+    }
+
     // Models endpoint
     if (url.pathname === '/v1/models' && req.method === 'GET') {
       try {
@@ -150,6 +341,7 @@ const server = Bun.serve({
     // Chat endpoint
     if (url.pathname === '/v1/chat' && req.method === 'POST') {
       // Verify authentication if enabled
+      let authenticatedUserId: string | null = null;
       if (isAuthEnabled()) {
         const authHeader = req.headers.get('Authorization');
         const authResult = await verifyToken(authHeader);
@@ -160,6 +352,7 @@ const server = Bun.serve({
             { status: 401, headers: corsHeaders }
           );
         }
+        authenticatedUserId = authResult.userId;
         console.log(`✅ Authenticated request from user: ${authResult.userId}`);
       }
 
@@ -181,6 +374,7 @@ const server = Bun.serve({
           useWebSearch?: boolean;
           model?: string;
           service?: 'ollama' | 'ghmodels';
+          conversationId?: string;
         };
         const {
           message,
@@ -192,6 +386,7 @@ const server = Bun.serve({
           useWebSearch,
           model,
           service,
+          conversationId,
         } = body;
 
         if (!message || typeof message !== 'string') {
@@ -223,6 +418,34 @@ const server = Bun.serve({
           model,
         });
 
+        // Persist messages if conversationId is provided and user is authenticated (text only, no images)
+        if (conversationId && !imageData && authenticatedUserId) {
+          const timestamp = new Date().toISOString();
+          // Save user message (verifies conversation ownership)
+          const userMsgSaved = await conversationsDb.addMessageForUser({
+            id: crypto.randomUUID(),
+            conversationId,
+            role: 'user',
+            content: message,
+            createdAt: timestamp,
+          }, authenticatedUserId);
+          
+          if (userMsgSaved) {
+            // Save assistant response
+            await conversationsDb.addMessageForUser({
+              id: crypto.randomUUID(),
+              conversationId,
+              role: 'assistant',
+              content: response.response,
+              createdAt: new Date().toISOString(),
+            }, authenticatedUserId);
+            // Update conversation model/service if changed
+            if (model || service) {
+              await conversationsDb.updateForUser(conversationId, authenticatedUserId, { model, service });
+            }
+          }
+        }
+
         return Response.json(response, { headers: corsHeaders });
       } catch (error) {
         console.error('Chat error:', error);
@@ -241,6 +464,202 @@ const server = Bun.serve({
             error: userMessage,
             response: userMessage, // Also include as response for consistent handling
           },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // Conversation endpoints (require authentication)
+    // GET /v1/conversations - List all conversations for authenticated user
+    if (url.pathname === '/v1/conversations' && req.method === 'GET') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const conversations = await conversationsDb.getAllForUser(authResult.userId);
+        return Response.json({ conversations }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversations fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversations fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch conversations' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // POST /v1/conversations - Create new conversation for authenticated user
+    if (url.pathname === '/v1/conversations' && req.method === 'POST') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const body = (await req.json()) as {
+          title?: string;
+          model?: string;
+          service?: string;
+        };
+
+        const now = new Date().toISOString();
+        const conversation: Conversation = {
+          id: crypto.randomUUID(),
+          userId: authResult.userId,
+          title: body.title || 'New Conversation',
+          model: body.model,
+          service: body.service,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await conversationsDb.create(conversation);
+        return Response.json({ conversation }, { status: 201, headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversation create error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation create error' } });
+        return Response.json(
+          { error: 'Failed to create conversation' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // GET /v1/conversations/:id - Get conversation with messages (user-scoped)
+    if (url.pathname.match(/^\/v1\/conversations\/[^/]+$/) && req.method === 'GET') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const conversationId = url.pathname.split('/').pop();
+        if (!conversationId) {
+          return Response.json(
+            { error: 'Conversation ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const conversation = await conversationsDb.getByIdForUser(conversationId, authResult.userId);
+        if (!conversation) {
+          return Response.json(
+            { error: 'Conversation not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        const messages = await conversationsDb.getMessagesForUser(conversationId, authResult.userId);
+        return Response.json({ conversation, messages }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversation fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch conversation' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // PATCH /v1/conversations/:id - Update conversation (user-scoped)
+    if (url.pathname.match(/^\/v1\/conversations\/[^/]+$/) && req.method === 'PATCH') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const conversationId = url.pathname.split('/').pop();
+        if (!conversationId) {
+          return Response.json(
+            { error: 'Conversation ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const body = (await req.json()) as {
+          title?: string;
+          model?: string;
+          service?: string;
+        };
+
+        const updated = await conversationsDb.updateForUser(conversationId, authResult.userId, body);
+        if (!updated) {
+          return Response.json(
+            { error: 'Conversation not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        const conversation = await conversationsDb.getByIdForUser(conversationId, authResult.userId);
+        return Response.json({ conversation }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversation update error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation update error' } });
+        return Response.json(
+          { error: 'Failed to update conversation' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // DELETE /v1/conversations/:id - Delete conversation (user-scoped)
+    if (url.pathname.match(/^\/v1\/conversations\/[^/]+$/) && req.method === 'DELETE') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const conversationId = url.pathname.split('/').pop();
+        if (!conversationId) {
+          return Response.json(
+            { error: 'Conversation ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const deleted = await conversationsDb.deleteForUser(conversationId, authResult.userId);
+        if (!deleted) {
+          return Response.json(
+            { error: 'Conversation not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        return Response.json({ success: true, deletedId: conversationId }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversation delete error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation delete error' } });
+        return Response.json(
+          { error: 'Failed to delete conversation' },
           { status: 500, headers: corsHeaders }
         );
       }
