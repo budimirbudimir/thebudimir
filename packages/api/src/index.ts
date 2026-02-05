@@ -1,6 +1,5 @@
 import * as mistral from './services/mistral';
 import * as ollama from './services/ollama';
-import { isAuthEnabled } from './auth';
 import * as Sentry from "@sentry/bun";
 import { initDb } from './db';
 import { handleStatusRoutes } from './routes/status';
