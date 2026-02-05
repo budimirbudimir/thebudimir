@@ -21,10 +21,175 @@ const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL, // Production domain from env
 ].filter(Boolean);
 
+// Agent Storage
+interface Agent {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  systemPrompt: string;
+  model?: string;
+  service?: string;
+  temperature: number;
+  maxTokens: number;
+  tools: string[];  // Array of tool names, e.g. ["web_search"]
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Database helper functions for agents
+const agentsDb = {
+  async getAllForUser(userId: string): Promise<Agent[]> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM agents WHERE user_id = ? ORDER BY updated_at DESC',
+      args: [userId],
+    });
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      userId: row.user_id as string,
+      name: row.name as string,
+      description: row.description as string | undefined,
+      systemPrompt: row.system_prompt as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      temperature: row.temperature as number,
+      maxTokens: row.max_tokens as number,
+      tools: row.tools ? JSON.parse(row.tools as string) : [],
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    }));
+  },
+
+  async getByIdForUser(id: string, userId: string): Promise<Agent | null> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM agents WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      userId: row.user_id as string,
+      name: row.name as string,
+      description: row.description as string | undefined,
+      systemPrompt: row.system_prompt as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      temperature: row.temperature as number,
+      maxTokens: row.max_tokens as number,
+      tools: row.tools ? JSON.parse(row.tools as string) : [],
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  },
+
+  async getById(id: string): Promise<Agent | null> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM agents WHERE id = ?',
+      args: [id],
+    });
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      userId: row.user_id as string,
+      name: row.name as string,
+      description: row.description as string | undefined,
+      systemPrompt: row.system_prompt as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      temperature: row.temperature as number,
+      maxTokens: row.max_tokens as number,
+      tools: row.tools ? JSON.parse(row.tools as string) : [],
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  },
+
+  async create(agent: Agent): Promise<void> {
+    await db.execute({
+      sql: 'INSERT INTO agents (id, user_id, name, description, system_prompt, model, service, temperature, max_tokens, tools, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [
+        agent.id,
+        agent.userId,
+        agent.name,
+        agent.description || null,
+        agent.systemPrompt,
+        agent.model || null,
+        agent.service || null,
+        agent.temperature,
+        agent.maxTokens,
+        JSON.stringify(agent.tools),
+        agent.createdAt,
+        agent.updatedAt,
+      ],
+    });
+  },
+
+  async updateForUser(
+    id: string,
+    userId: string,
+    updates: Partial<Omit<Agent, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<boolean> {
+    const fields: string[] = ['updated_at = ?'];
+    const args: (string | number | null)[] = [new Date().toISOString()];
+
+    if (updates.name !== undefined) {
+      fields.push('name = ?');
+      args.push(updates.name);
+    }
+    if (updates.description !== undefined) {
+      fields.push('description = ?');
+      args.push(updates.description || null);
+    }
+    if (updates.systemPrompt !== undefined) {
+      fields.push('system_prompt = ?');
+      args.push(updates.systemPrompt);
+    }
+    if (updates.model !== undefined) {
+      fields.push('model = ?');
+      args.push(updates.model || null);
+    }
+    if (updates.service !== undefined) {
+      fields.push('service = ?');
+      args.push(updates.service || null);
+    }
+    if (updates.temperature !== undefined) {
+      fields.push('temperature = ?');
+      args.push(updates.temperature);
+    }
+    if (updates.maxTokens !== undefined) {
+      fields.push('max_tokens = ?');
+      args.push(updates.maxTokens);
+    }
+    if (updates.tools !== undefined) {
+      fields.push('tools = ?');
+      args.push(JSON.stringify(updates.tools));
+    }
+
+    args.push(id);
+    args.push(userId);
+    const result = await db.execute({
+      sql: `UPDATE agents SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+      args,
+    });
+    return result.rowsAffected > 0;
+  },
+
+  async deleteForUser(id: string, userId: string): Promise<boolean> {
+    const result = await db.execute({
+      sql: 'DELETE FROM agents WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    return result.rowsAffected > 0;
+  },
+};
+
 // Conversation Storage
 interface Conversation {
   id: string;
   userId: string;
+  agentId?: string;
   title: string;
   model?: string;
   service?: string;
@@ -50,6 +215,7 @@ const conversationsDb = {
     return result.rows.map((row) => ({
       id: row.id as string,
       userId: row.user_id as string,
+      agentId: row.agent_id as string | undefined,
       title: row.title as string,
       model: row.model as string | undefined,
       service: row.service as string | undefined,
@@ -68,6 +234,7 @@ const conversationsDb = {
     return {
       id: row.id as string,
       userId: row.user_id as string,
+      agentId: row.agent_id as string | undefined,
       title: row.title as string,
       model: row.model as string | undefined,
       service: row.service as string | undefined,
@@ -78,8 +245,8 @@ const conversationsDb = {
 
   async create(conversation: Conversation): Promise<void> {
     await db.execute({
-      sql: 'INSERT INTO conversations (id, user_id, title, model, service, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      args: [conversation.id, conversation.userId, conversation.title, conversation.model || null, conversation.service || null, conversation.createdAt, conversation.updatedAt],
+      sql: 'INSERT INTO conversations (id, user_id, agent_id, title, model, service, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [conversation.id, conversation.userId, conversation.agentId || null, conversation.title, conversation.model || null, conversation.service || null, conversation.createdAt, conversation.updatedAt],
     });
   },
 
@@ -396,9 +563,26 @@ const server = Bun.serve({
           );
         }
 
-        // Select service based on request or default
+        // Check if conversation has an agent and load agent config
+        let agent: Agent | null = null;
+        if (conversationId && authenticatedUserId) {
+          const conversation = await conversationsDb.getByIdForUser(conversationId, authenticatedUserId);
+          if (conversation?.agentId) {
+            agent = await agentsDb.getById(conversation.agentId);
+          }
+        }
+
+        // Use agent config as defaults, with request params taking precedence
+        const effectiveSystemPrompt = systemPrompt || agent?.systemPrompt || 'You are a helpful assistant.';
+        const effectiveTemperature = temperature ?? agent?.temperature;
+        const effectiveMaxTokens = maxTokens ?? agent?.maxTokens;
+        const effectiveModel = model || agent?.model;
+        const effectiveService = service || (agent?.service as 'ollama' | 'ghmodels' | undefined);
+        const effectiveUseTools = useWebSearch ?? useTools ?? (agent?.tools?.includes('web_search') ?? false);
+
+        // Select service based on request, agent config, or default
         const selectedService =
-          service === 'ghmodels' ? mistral : service === 'ollama' ? ollama : aiService;
+          effectiveService === 'ghmodels' ? mistral : effectiveService === 'ollama' ? ollama : aiService;
 
         // Check if selected service is configured
         if (!selectedService.isConfigured()) {
@@ -411,11 +595,11 @@ const server = Bun.serve({
         const response = await selectedService.chat({
           message,
           imageData,
-          systemPrompt,
-          temperature,
-          maxTokens,
-          useTools: useWebSearch ?? useTools,
-          model,
+          systemPrompt: effectiveSystemPrompt,
+          temperature: effectiveTemperature,
+          maxTokens: effectiveMaxTokens,
+          useTools: effectiveUseTools,
+          model: effectiveModel,
         });
 
         // Persist messages if conversationId is provided and user is authenticated (text only, no images)
@@ -469,6 +653,209 @@ const server = Bun.serve({
       }
     }
 
+    // Agent endpoints (require authentication)
+    // GET /v1/agents - List all agents for authenticated user
+    if (url.pathname === '/v1/agents' && req.method === 'GET') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const agents = await agentsDb.getAllForUser(authResult.userId);
+        return Response.json({ agents }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Agents fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agents fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch agents' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // POST /v1/agents - Create new agent
+    if (url.pathname === '/v1/agents' && req.method === 'POST') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const body = (await req.json()) as {
+          name?: string;
+          description?: string;
+          systemPrompt?: string;
+          model?: string;
+          service?: string;
+          temperature?: number;
+          maxTokens?: number;
+          tools?: string[];
+        };
+
+        if (!body.name || !body.systemPrompt) {
+          return Response.json(
+            { error: 'Name and system prompt are required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const now = new Date().toISOString();
+        const agent: Agent = {
+          id: crypto.randomUUID(),
+          userId: authResult.userId,
+          name: body.name,
+          description: body.description,
+          systemPrompt: body.systemPrompt,
+          model: body.model,
+          service: body.service,
+          temperature: body.temperature ?? 0.7,
+          maxTokens: body.maxTokens ?? 2000,
+          tools: body.tools ?? [],
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await agentsDb.create(agent);
+        return Response.json({ agent }, { status: 201, headers: corsHeaders });
+      } catch (error) {
+        console.error('Agent create error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agent create error' } });
+        return Response.json(
+          { error: 'Failed to create agent' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // GET /v1/agents/:id - Get agent details
+    if (url.pathname.match(/^\/v1\/agents\/[^/]+$/) && req.method === 'GET') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const agentId = url.pathname.split('/').pop();
+        if (!agentId) {
+          return Response.json(
+            { error: 'Agent ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const agent = await agentsDb.getByIdForUser(agentId, authResult.userId);
+        if (!agent) {
+          return Response.json(
+            { error: 'Agent not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        return Response.json({ agent }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Agent fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agent fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch agent' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // PATCH /v1/agents/:id - Update agent
+    if (url.pathname.match(/^\/v1\/agents\/[^/]+$/) && req.method === 'PATCH') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const agentId = url.pathname.split('/').pop();
+        if (!agentId) {
+          return Response.json(
+            { error: 'Agent ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const body = (await req.json()) as Partial<Omit<Agent, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>;
+
+        const updated = await agentsDb.updateForUser(agentId, authResult.userId, body);
+        if (!updated) {
+          return Response.json(
+            { error: 'Agent not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        const agent = await agentsDb.getByIdForUser(agentId, authResult.userId);
+        return Response.json({ agent }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Agent update error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agent update error' } });
+        return Response.json(
+          { error: 'Failed to update agent' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // DELETE /v1/agents/:id - Delete agent
+    if (url.pathname.match(/^\/v1\/agents\/[^/]+$/) && req.method === 'DELETE') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const agentId = url.pathname.split('/').pop();
+        if (!agentId) {
+          return Response.json(
+            { error: 'Agent ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const deleted = await agentsDb.deleteForUser(agentId, authResult.userId);
+        if (!deleted) {
+          return Response.json(
+            { error: 'Agent not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        return Response.json({ success: true, deletedId: agentId }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Agent delete error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agent delete error' } });
+        return Response.json(
+          { error: 'Failed to delete agent' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
     // Conversation endpoints (require authentication)
     // GET /v1/conversations - List all conversations for authenticated user
     if (url.pathname === '/v1/conversations' && req.method === 'GET') {
@@ -512,21 +899,35 @@ const server = Bun.serve({
           title?: string;
           model?: string;
           service?: string;
+          agentId?: string;
         };
+
+        // If agentId is provided, verify it belongs to the user
+        let agent: Agent | null = null;
+        if (body.agentId) {
+          agent = await agentsDb.getByIdForUser(body.agentId, authResult.userId);
+          if (!agent) {
+            return Response.json(
+              { error: 'Agent not found' },
+              { status: 404, headers: corsHeaders }
+            );
+          }
+        }
 
         const now = new Date().toISOString();
         const conversation: Conversation = {
           id: crypto.randomUUID(),
           userId: authResult.userId,
-          title: body.title || 'New Conversation',
-          model: body.model,
-          service: body.service,
+          agentId: body.agentId,
+          title: body.title || (agent ? `Chat with ${agent.name}` : 'New Conversation'),
+          model: body.model || agent?.model,
+          service: body.service || agent?.service,
           createdAt: now,
           updatedAt: now,
         };
 
         await conversationsDb.create(conversation);
-        return Response.json({ conversation }, { status: 201, headers: corsHeaders });
+        return Response.json({ conversation, agent }, { status: 201, headers: corsHeaders });
       } catch (error) {
         console.error('Conversation create error:', error);
         Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation create error' } });
@@ -566,8 +967,14 @@ const server = Bun.serve({
           );
         }
 
+        // Load agent info if conversation has an agent
+        let agent: Agent | null = null;
+        if (conversation.agentId) {
+          agent = await agentsDb.getById(conversation.agentId);
+        }
+
         const messages = await conversationsDb.getMessagesForUser(conversationId, authResult.userId);
-        return Response.json({ conversation, messages }, { headers: corsHeaders });
+        return Response.json({ conversation, messages, agent }, { headers: corsHeaders });
       } catch (error) {
         console.error('Conversation fetch error:', error);
         Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation fetch error' } });

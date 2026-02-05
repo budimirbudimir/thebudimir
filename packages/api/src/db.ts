@@ -48,14 +48,38 @@ export async function initDb(): Promise<void> {
   `);
 
   await db.execute(`
+    CREATE TABLE IF NOT EXISTS agents (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      system_prompt TEXT NOT NULL,
+      model TEXT,
+      service TEXT,
+      temperature REAL DEFAULT 0.7,
+      max_tokens INTEGER DEFAULT 2000,
+      tools TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  // Create index for faster agent lookups by user
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_agents_user_id ON agents(user_id)
+  `);
+
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS conversations (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      agent_id TEXT,
       title TEXT NOT NULL,
       model TEXT,
       service TEXT,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE SET NULL
     )
   `);
 
