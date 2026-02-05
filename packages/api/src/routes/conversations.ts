@@ -3,7 +3,6 @@ import { verifyToken } from '../auth';
 import {
   conversationsDb,
   type Conversation,
-  type ConversationMessage,
 } from '../storage/conversations';
 import { agentsDb, type Agent } from '../storage/agents';
 
