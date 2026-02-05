@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/budimirbudimir/thebudimir/compare/v1.17.0...v1.18.0) (2026-02-05)
+
+
+### Features
+
+* tidy codebase ([#52](https://github.com/budimirbudimir/thebudimir/issues/52)) ([4a7e33d](https://github.com/budimirbudimir/thebudimir/commit/4a7e33dcfaa34333ffec3ecc092109924b16ce48))
+
 # [1.17.0](https://github.com/budimirbudimir/thebudimir/compare/v1.16.0...v1.17.0) (2026-02-05)
 
 
