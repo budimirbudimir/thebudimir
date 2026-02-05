@@ -1065,7 +1065,7 @@ export default function Chat() {
       <Group justify="space-between" mb="xl">
         <Group>
           <Button onClick={handleBackToList} variant="subtle">
-            7 Back to Conversations
+            ← Back to Conversations
           </Button>
           <Title order={1}>AI Chat</Title>
         </Group>
@@ -1415,7 +1415,7 @@ export default function Chat() {
                   >
                     {(props) => (
                       <Button {...props} size="xs" variant="light" disabled={isLoading}>
-                        4f7 Attach Image
+                        📷 Attach Image
                       </Button>
                     )}
                   </FileButton>
@@ -1427,7 +1427,7 @@ export default function Chat() {
                       onClick={clearImage}
                       disabled={isLoading}
                     >
-                      0 Remove
+                      ✕ Remove
                     </Button>
                   )}
                 </>
