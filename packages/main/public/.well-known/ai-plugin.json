@@ -1,0 +1,9 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Blocked",
+  "legal_info_url": "",
+  "contact_email": "",
+  "api": {
+    "type": "none"
+  }
+}
