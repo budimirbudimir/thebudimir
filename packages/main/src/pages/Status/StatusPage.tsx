@@ -18,6 +18,8 @@ interface ApiStatus {
   timestamp: string;
   uptime: number;
   model?: string;
+  models?: number;
+  url?: string;
 }
 
 interface ServiceStatus {
@@ -41,8 +43,15 @@ export default function Status() {
     {
       name: 'GitHub Models (AI)',
       endpoint: import.meta.env.PROD
-        ? 'https://api.thebudimir.com/v1/chat'
-        : 'http://localhost:3000/v1/chat',
+        ? 'https://api.thebudimir.com/v1/ghmodels/status'
+        : 'http://localhost:3000/v1/ghmodels/status',
+      status: 'loading',
+    },
+    {
+      name: 'Ollama (Local AI)',
+      endpoint: import.meta.env.PROD
+        ? 'https://api.thebudimir.com/v1/ollama/status'
+        : 'http://localhost:3000/v1/ollama/status',
       status: 'loading',
     },
   ]);
@@ -52,11 +61,11 @@ export default function Status() {
   useEffect(() => {
     const checkStatus = async (service: ServiceStatus): Promise<ServiceStatus> => {
       try {
-        // For AI endpoint, send a test message
-        const isAIEndpoint = service.endpoint.includes('/chat');
+        // For AI chat endpoint, send a test message
+        const isAIChatEndpoint = service.endpoint.includes('/chat');
         const response = await fetch(
           service.endpoint,
-          isAIEndpoint
+          isAIChatEndpoint
             ? {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -164,6 +173,14 @@ export default function Status() {
                         Model:
                       </Text>
                       <Text size="sm">{service.data.model}</Text>
+                    </Group>
+                  )}
+                  {service.data.models !== undefined && (
+                    <Group justify="space-between">
+                      <Text size="sm" fw={500}>
+                        Models Available:
+                      </Text>
+                      <Text size="sm">{service.data.models}</Text>
                     </Group>
                   )}
                   {service.data.uptime !== undefined && (

@@ -25,6 +25,61 @@ IMPORTANT:
 - If you don't need tools, go directly to <answer>
 `;
 
+// Team member info for multi-agent coordination
+export interface TeamMember {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+// Generate ReAct prompt with team delegation capability
+export function generateTeamPrompt(customPrompt: string, teamMembers: TeamMember[]): string {
+  const memberList = teamMembers
+    .map(m => `  - ${m.name} (id: ${m.id}): ${m.description || 'Specialist agent'}`)
+    .join('\n');
+  
+  return `${customPrompt}
+
+You are the coordinator of a team. You can delegate tasks to specialist agents.
+
+For each step, you should:
+1. Think about what you need to do
+2. If you need information, use a tool or delegate to a specialist
+3. Observe the results
+4. Repeat until you can provide a final answer
+
+Available tools:
+- web_search: Search the web for current information.
+  Usage: <action tool="web_search">your search query</action>
+- delegate_to_agent: Delegate a subtask to a specialist agent.
+  Usage: <action tool="delegate_to_agent" agent="agent_id">the task to delegate</action>
+
+Available team members:
+${memberList}
+
+Response format:
+- To think: <think>your reasoning here</think>
+- To use a tool: <action tool="tool_name">parameters</action>
+- To delegate: <action tool="delegate_to_agent" agent="agent_id">subtask description</action>
+- To provide final answer: <answer>your complete response to the user</answer>
+
+IMPORTANT:
+- You are the coordinator - synthesize results from specialists into a final answer
+- Always wrap your final response in <answer> tags
+- Delegate specialized tasks to the appropriate team member
+- You can use multiple tools/delegations before answering
+`;
+}
+
+// Parse delegate_to_agent action
+export function parseDelegation(text: string): { agentId: string; task: string } | null {
+  const delegateMatch = text.match(/<action\s+tool="delegate_to_agent"\s+agent="([^"]+)">(.*?)<\/action>/s);
+  if (delegateMatch) {
+    return { agentId: delegateMatch[1], task: delegateMatch[2].trim() };
+  }
+  return null;
+}
+
 // OLLAMA_URL can be:
 // - http://localhost:11434 (default, direct Ollama access)
 // - https://localhost:8443 (HTTPS proxy for browser access from production sites)
@@ -215,7 +270,7 @@ function parseAction(text: string): { tool: string; params: string } | null {
 }
 
 // Parse answer tags from model output
-function parseAnswer(text: string): string | null {
+export function parseAnswer(text: string): string | null {
   const answerMatch = text.match(/<answer>(.*?)<\/answer>/s);
   return answerMatch ? answerMatch[1].trim() : null;
 }
@@ -284,7 +339,7 @@ export async function chat(request: ChatRequest & { model?: string; maxIteration
     if (parts.length < 2) {
       throw new Error('Invalid image data format. Expected data URL with base64.');
     }
-    let base64Data = parts[1];
+    const base64Data = parts[1];
     const formatMatch = parts[0].match(/image\/(\w+)/);
     const imageFormat = formatMatch ? formatMatch[1] : 'unknown';
 

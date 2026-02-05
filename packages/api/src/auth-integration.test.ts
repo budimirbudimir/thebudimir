@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 
 interface ErrorResponse {
   error: string;
@@ -33,7 +33,7 @@ describe('API Authentication Integration', () => {
       expect(response.status).toBe(401);
       const data = await response.json() as ErrorResponse;
       expect(data.error).toBe('Unauthorized');
-    } catch (error) {
+    } catch (_error) {
       console.log('⏭️  Skipping test - API server not running');
     }
   });
@@ -60,7 +60,7 @@ describe('API Authentication Integration', () => {
       expect(response.status).toBe(401);
       const data = await response.json() as ErrorResponse;
       expect(data.error).toBe('Unauthorized');
-    } catch (error) {
+    } catch (_error) {
       console.log('⏭️  Skipping test - API server not running');
     }
   });
@@ -86,7 +86,7 @@ describe('API Authentication Integration', () => {
       // Should not return 401 when auth is disabled
       // May return 503 (service not configured) or other errors, but not 401
       expect(response.status).not.toBe(401);
-    } catch (error) {
+    } catch (_error) {
       console.log('⏭️  Skipping test - API server not running');
     }
   });
@@ -99,7 +99,7 @@ describe('API Authentication Integration', () => {
 
       // Models endpoint should be public
       expect(response.status).not.toBe(401);
-    } catch (error) {
+    } catch (_error) {
       console.log('⏭️  Skipping test - API server not running');
     }
   });
@@ -113,7 +113,7 @@ describe('API Authentication Integration', () => {
       expect(response.status).toBe(200);
       const data = await response.json() as HealthResponse;
       expect(data.status).toBe('ok');
-    } catch (error) {
+    } catch (_error) {
       console.log('⏭️  Skipping test - API server not running');
     }
   });

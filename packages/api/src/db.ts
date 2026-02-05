@@ -111,4 +111,25 @@ export async function initDb(): Promise<void> {
   await db.execute(`
     CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)
   `);
+
+  // Teams table for multi-agent collaboration
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS teams (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      coordinator_agent_id TEXT NOT NULL,
+      member_agent_ids TEXT NOT NULL,
+      execution_mode TEXT DEFAULT 'sequential',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (coordinator_agent_id) REFERENCES agents(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create index for faster team lookups by user
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_teams_user_id ON teams(user_id)
+  `);
 }
