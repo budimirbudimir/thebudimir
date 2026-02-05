@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/budimirbudimir/thebudimir/compare/v1.16.0...v1.17.0) (2026-02-05)
+
+
+### Features
+
+* migrate db ([#49](https://github.com/budimirbudimir/thebudimir/issues/49)) ([a67b6f9](https://github.com/budimirbudimir/thebudimir/commit/a67b6f959f26cf7d5e2b3aa773414e8ada0c64df))
+
 # [1.16.0](https://github.com/budimirbudimir/thebudimir/compare/v1.15.1...v1.16.0) (2026-02-04)
 
 
