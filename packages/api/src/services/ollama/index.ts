@@ -1,6 +1,6 @@
 import sharp from 'sharp';
-import type { ChatRequest, ChatResponse } from './mistral';
-import { formatSearchResults, webSearch } from './search';
+import type { ChatRequest, ChatResponse } from '../mistral';
+import { formatSearchResults, webSearch } from '../search';
 
 // ReAct-style prompt for agentic execution
 const REACT_SYSTEM_PROMPT = `You are an AI assistant that can use tools to help answer questions.
@@ -459,7 +459,10 @@ export async function chat(request: ChatRequest & { model?: string; maxIteration
 
 export async function listModels(): Promise<OllamaModel[]> {
   try {
-    const response = await fetch(`${OLLAMA_URL}/api/tags`);
+    const response = await fetch(`${OLLAMA_URL}/api/tags`, {
+      // Avoid hanging when Ollama is not running or unreachable
+      signal: AbortSignal.timeout(3000),
+    });
 
     if (!response.ok) {
       console.error('Failed to fetch Ollama models:', response.statusText);

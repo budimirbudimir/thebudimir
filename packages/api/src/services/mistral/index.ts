@@ -1,5 +1,5 @@
 import { Mistral } from '@mistralai/mistralai';
-import { formatSearchResults, webSearch } from './search';
+import { formatSearchResults, webSearch } from '../search';
 
 const GH_MODELS_TOKEN = process.env.GH_MODELS_TOKEN;
 
