@@ -21,6 +21,431 @@ const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL, // Production domain from env
 ].filter(Boolean);
 
+// Agent Storage
+interface Agent {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  systemPrompt: string;
+  model?: string;
+  service?: string;
+  temperature: number;
+  maxTokens: number;
+  maxIterations: number;  // Max ReAct loop iterations (default: 5)
+  tools: string[];  // Array of tool names, e.g. ["web_search"]
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Database helper functions for agents
+const agentsDb = {
+  async getAllForUser(userId: string): Promise<Agent[]> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM agents WHERE user_id = ? ORDER BY updated_at DESC',
+      args: [userId],
+    });
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      userId: row.user_id as string,
+      name: row.name as string,
+      description: row.description as string | undefined,
+      systemPrompt: row.system_prompt as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      temperature: row.temperature as number,
+      maxTokens: row.max_tokens as number,
+      maxIterations: (row.max_iterations as number) ?? 5,
+      tools: row.tools ? JSON.parse(row.tools as string) : [],
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    }));
+  },
+
+  async getByIdForUser(id: string, userId: string): Promise<Agent | null> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM agents WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      userId: row.user_id as string,
+      name: row.name as string,
+      description: row.description as string | undefined,
+      systemPrompt: row.system_prompt as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      temperature: row.temperature as number,
+      maxTokens: row.max_tokens as number,
+      maxIterations: (row.max_iterations as number) ?? 5,
+      tools: row.tools ? JSON.parse(row.tools as string) : [],
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  },
+
+  async getById(id: string): Promise<Agent | null> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM agents WHERE id = ?',
+      args: [id],
+    });
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      userId: row.user_id as string,
+      name: row.name as string,
+      description: row.description as string | undefined,
+      systemPrompt: row.system_prompt as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      temperature: row.temperature as number,
+      maxTokens: row.max_tokens as number,
+      maxIterations: (row.max_iterations as number) ?? 5,
+      tools: row.tools ? JSON.parse(row.tools as string) : [],
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  },
+
+  async create(agent: Agent): Promise<void> {
+    await db.execute({
+      sql: 'INSERT INTO agents (id, user_id, name, description, system_prompt, model, service, temperature, max_tokens, max_iterations, tools, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [
+        agent.id,
+        agent.userId,
+        agent.name,
+        agent.description || null,
+        agent.systemPrompt,
+        agent.model || null,
+        agent.service || null,
+        agent.temperature,
+        agent.maxTokens,
+        agent.maxIterations,
+        JSON.stringify(agent.tools),
+        agent.createdAt,
+        agent.updatedAt,
+      ],
+    });
+  },
+
+  async updateForUser(
+    id: string,
+    userId: string,
+    updates: Partial<Omit<Agent, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<boolean> {
+    const fields: string[] = ['updated_at = ?'];
+    const args: (string | number | null)[] = [new Date().toISOString()];
+
+    if (updates.name !== undefined) {
+      fields.push('name = ?');
+      args.push(updates.name);
+    }
+    if (updates.description !== undefined) {
+      fields.push('description = ?');
+      args.push(updates.description || null);
+    }
+    if (updates.systemPrompt !== undefined) {
+      fields.push('system_prompt = ?');
+      args.push(updates.systemPrompt);
+    }
+    if (updates.model !== undefined) {
+      fields.push('model = ?');
+      args.push(updates.model || null);
+    }
+    if (updates.service !== undefined) {
+      fields.push('service = ?');
+      args.push(updates.service || null);
+    }
+    if (updates.temperature !== undefined) {
+      fields.push('temperature = ?');
+      args.push(updates.temperature);
+    }
+    if (updates.maxTokens !== undefined) {
+      fields.push('max_tokens = ?');
+      args.push(updates.maxTokens);
+    }
+    if (updates.maxIterations !== undefined) {
+      fields.push('max_iterations = ?');
+      args.push(updates.maxIterations);
+    }
+    if (updates.tools !== undefined) {
+      fields.push('tools = ?');
+      args.push(JSON.stringify(updates.tools));
+    }
+
+    args.push(id);
+    args.push(userId);
+    const result = await db.execute({
+      sql: `UPDATE agents SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+      args,
+    });
+    return result.rowsAffected > 0;
+  },
+
+  async deleteForUser(id: string, userId: string): Promise<boolean> {
+    const result = await db.execute({
+      sql: 'DELETE FROM agents WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    return result.rowsAffected > 0;
+  },
+};
+
+// Team Storage (Multi-Agent)
+interface Team {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  coordinatorAgentId: string;
+  memberAgentIds: string[];  // Array of agent IDs
+  executionMode: 'sequential' | 'parallel';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Database helper functions for teams
+const teamsDb = {
+  async getAllForUser(userId: string): Promise<Team[]> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM teams WHERE user_id = ? ORDER BY updated_at DESC',
+      args: [userId],
+    });
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      userId: row.user_id as string,
+      name: row.name as string,
+      description: row.description as string | undefined,
+      coordinatorAgentId: row.coordinator_agent_id as string,
+      memberAgentIds: row.member_agent_ids ? JSON.parse(row.member_agent_ids as string) : [],
+      executionMode: (row.execution_mode as 'sequential' | 'parallel') || 'sequential',
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    }));
+  },
+
+  async getByIdForUser(id: string, userId: string): Promise<Team | null> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM teams WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      userId: row.user_id as string,
+      name: row.name as string,
+      description: row.description as string | undefined,
+      coordinatorAgentId: row.coordinator_agent_id as string,
+      memberAgentIds: row.member_agent_ids ? JSON.parse(row.member_agent_ids as string) : [],
+      executionMode: (row.execution_mode as 'sequential' | 'parallel') || 'sequential',
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  },
+
+  async create(team: Team): Promise<void> {
+    await db.execute({
+      sql: 'INSERT INTO teams (id, user_id, name, description, coordinator_agent_id, member_agent_ids, execution_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [
+        team.id,
+        team.userId,
+        team.name,
+        team.description || null,
+        team.coordinatorAgentId,
+        JSON.stringify(team.memberAgentIds),
+        team.executionMode,
+        team.createdAt,
+        team.updatedAt,
+      ],
+    });
+  },
+
+  async updateForUser(
+    id: string,
+    userId: string,
+    updates: Partial<Omit<Team, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<boolean> {
+    const fields: string[] = ['updated_at = ?'];
+    const args: (string | null)[] = [new Date().toISOString()];
+
+    if (updates.name !== undefined) {
+      fields.push('name = ?');
+      args.push(updates.name);
+    }
+    if (updates.description !== undefined) {
+      fields.push('description = ?');
+      args.push(updates.description || null);
+    }
+    if (updates.coordinatorAgentId !== undefined) {
+      fields.push('coordinator_agent_id = ?');
+      args.push(updates.coordinatorAgentId);
+    }
+    if (updates.memberAgentIds !== undefined) {
+      fields.push('member_agent_ids = ?');
+      args.push(JSON.stringify(updates.memberAgentIds));
+    }
+    if (updates.executionMode !== undefined) {
+      fields.push('execution_mode = ?');
+      args.push(updates.executionMode);
+    }
+
+    args.push(id);
+    args.push(userId);
+    const result = await db.execute({
+      sql: `UPDATE teams SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+      args,
+    });
+    return result.rowsAffected > 0;
+  },
+
+  async deleteForUser(id: string, userId: string): Promise<boolean> {
+    const result = await db.execute({
+      sql: 'DELETE FROM teams WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    return result.rowsAffected > 0;
+  },
+};
+
+// Conversation Storage
+interface Conversation {
+  id: string;
+  userId: string;
+  agentId?: string;
+  title: string;
+  model?: string;
+  service?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
+// Database helper functions for conversations
+const conversationsDb = {
+  async getAllForUser(userId: string): Promise<Conversation[]> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM conversations WHERE user_id = ? ORDER BY updated_at DESC',
+      args: [userId],
+    });
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      userId: row.user_id as string,
+      agentId: row.agent_id as string | undefined,
+      title: row.title as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    }));
+  },
+
+  async getByIdForUser(id: string, userId: string): Promise<Conversation | null> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM conversations WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      userId: row.user_id as string,
+      agentId: row.agent_id as string | undefined,
+      title: row.title as string,
+      model: row.model as string | undefined,
+      service: row.service as string | undefined,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  },
+
+  async create(conversation: Conversation): Promise<void> {
+    await db.execute({
+      sql: 'INSERT INTO conversations (id, user_id, agent_id, title, model, service, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [conversation.id, conversation.userId, conversation.agentId || null, conversation.title, conversation.model || null, conversation.service || null, conversation.createdAt, conversation.updatedAt],
+    });
+  },
+
+  async updateForUser(id: string, userId: string, updates: { title?: string; model?: string; service?: string }): Promise<boolean> {
+    const fields: string[] = ['updated_at = ?'];
+    const args: (string | null)[] = [new Date().toISOString()];
+    
+    if (updates.title !== undefined) {
+      fields.push('title = ?');
+      args.push(updates.title);
+    }
+    if (updates.model !== undefined) {
+      fields.push('model = ?');
+      args.push(updates.model);
+    }
+    if (updates.service !== undefined) {
+      fields.push('service = ?');
+      args.push(updates.service);
+    }
+    
+    args.push(id);
+    args.push(userId);
+    const result = await db.execute({
+      sql: `UPDATE conversations SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+      args,
+    });
+    return result.rowsAffected > 0;
+  },
+
+  async deleteForUser(id: string, userId: string): Promise<boolean> {
+    const result = await db.execute({
+      sql: 'DELETE FROM conversations WHERE id = ? AND user_id = ?',
+      args: [id, userId],
+    });
+    return result.rowsAffected > 0;
+  },
+
+  async getMessagesForUser(conversationId: string, userId: string): Promise<ConversationMessage[] | null> {
+    // First verify the conversation belongs to the user
+    const conv = await this.getByIdForUser(conversationId, userId);
+    if (!conv) return null;
+    
+    const result = await db.execute({
+      sql: 'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
+      args: [conversationId],
+    });
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      conversationId: row.conversation_id as string,
+      role: row.role as 'user' | 'assistant',
+      content: row.content as string,
+      createdAt: row.created_at as string,
+    }));
+  },
+
+  async addMessageForUser(message: ConversationMessage, userId: string): Promise<boolean> {
+    // First verify the conversation belongs to the user
+    const conv = await this.getByIdForUser(message.conversationId, userId);
+    if (!conv) return false;
+    
+    await db.execute({
+      sql: 'INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)',
+      args: [message.id, message.conversationId, message.role, message.content, message.createdAt],
+    });
+    // Update conversation's updated_at
+    await db.execute({
+      sql: 'UPDATE conversations SET updated_at = ? WHERE id = ?',
+      args: [message.createdAt, message.conversationId],
+    });
+    return true;
+  },
+};
+
 // Shopping List Storage
 interface ShoppingListItem {
   id: string;
@@ -109,6 +534,65 @@ const server = Bun.serve({
       );
     }
 
+    // GitHub Models status endpoint
+    if (url.pathname === '/v1/ghmodels/status' && req.method === 'GET') {
+      const isConfigured = mistral.isConfigured();
+      if (!isConfigured) {
+        return Response.json(
+          {
+            status: 'offline',
+            error: 'GH_MODELS_TOKEN not configured',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 503, headers: corsHeaders }
+        );
+      }
+      return Response.json(
+        {
+          status: 'online',
+          timestamp: new Date().toISOString(),
+        },
+        { headers: corsHeaders }
+      );
+    }
+
+    // Ollama status endpoint
+    if (url.pathname === '/v1/ollama/status' && req.method === 'GET') {
+      try {
+        const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+        const response = await fetch(`${ollamaUrl}/api/tags`, {
+          signal: AbortSignal.timeout(5000), // 5s timeout
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Ollama returned ${response.status}`);
+        }
+        
+        const data = await response.json() as { models?: Array<{ name: string }> };
+        const modelCount = data.models?.length || 0;
+        
+        return Response.json(
+          {
+            status: 'online',
+            url: ollamaUrl,
+            models: modelCount,
+            timestamp: new Date().toISOString(),
+          },
+          { headers: corsHeaders }
+        );
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return Response.json(
+          {
+            status: 'offline',
+            error: errorMessage,
+            timestamp: new Date().toISOString(),
+          },
+          { status: 503, headers: corsHeaders }
+        );
+      }
+    }
+
     // Models endpoint
     if (url.pathname === '/v1/models' && req.method === 'GET') {
       try {
@@ -150,6 +634,7 @@ const server = Bun.serve({
     // Chat endpoint
     if (url.pathname === '/v1/chat' && req.method === 'POST') {
       // Verify authentication if enabled
+      let authenticatedUserId: string | null = null;
       if (isAuthEnabled()) {
         const authHeader = req.headers.get('Authorization');
         const authResult = await verifyToken(authHeader);
@@ -160,6 +645,7 @@ const server = Bun.serve({
             { status: 401, headers: corsHeaders }
           );
         }
+        authenticatedUserId = authResult.userId;
         console.log(`✅ Authenticated request from user: ${authResult.userId}`);
       }
 
@@ -181,6 +667,7 @@ const server = Bun.serve({
           useWebSearch?: boolean;
           model?: string;
           service?: 'ollama' | 'ghmodels';
+          conversationId?: string;
         };
         const {
           message,
@@ -192,6 +679,7 @@ const server = Bun.serve({
           useWebSearch,
           model,
           service,
+          conversationId,
         } = body;
 
         if (!message || typeof message !== 'string') {
@@ -201,9 +689,27 @@ const server = Bun.serve({
           );
         }
 
-        // Select service based on request or default
+        // Check if conversation has an agent and load agent config
+        let agent: Agent | null = null;
+        if (conversationId && authenticatedUserId) {
+          const conversation = await conversationsDb.getByIdForUser(conversationId, authenticatedUserId);
+          if (conversation?.agentId) {
+            agent = await agentsDb.getById(conversation.agentId);
+          }
+        }
+
+        // Use agent config as defaults, with request params taking precedence
+        const effectiveSystemPrompt = systemPrompt || agent?.systemPrompt || 'You are a helpful assistant.';
+        const effectiveTemperature = temperature ?? agent?.temperature;
+        const effectiveMaxTokens = maxTokens ?? agent?.maxTokens;
+        const effectiveMaxIterations = agent?.maxIterations ?? 5;
+        const effectiveModel = model || agent?.model;
+        const effectiveService = service || (agent?.service as 'ollama' | 'ghmodels' | undefined);
+        const effectiveUseTools = useWebSearch ?? useTools ?? (agent?.tools?.includes('web_search') ?? false);
+
+        // Select service based on request, agent config, or default
         const selectedService =
-          service === 'ghmodels' ? mistral : service === 'ollama' ? ollama : aiService;
+          effectiveService === 'ghmodels' ? mistral : effectiveService === 'ollama' ? ollama : aiService;
 
         // Check if selected service is configured
         if (!selectedService.isConfigured()) {
@@ -216,12 +722,41 @@ const server = Bun.serve({
         const response = await selectedService.chat({
           message,
           imageData,
-          systemPrompt,
-          temperature,
-          maxTokens,
-          useTools: useWebSearch ?? useTools,
-          model,
+          systemPrompt: effectiveSystemPrompt,
+          temperature: effectiveTemperature,
+          maxTokens: effectiveMaxTokens,
+          maxIterations: effectiveMaxIterations,
+          useTools: effectiveUseTools,
+          model: effectiveModel,
         });
+
+        // Persist messages if conversationId is provided and user is authenticated (text only, no images)
+        if (conversationId && !imageData && authenticatedUserId) {
+          const timestamp = new Date().toISOString();
+          // Save user message (verifies conversation ownership)
+          const userMsgSaved = await conversationsDb.addMessageForUser({
+            id: crypto.randomUUID(),
+            conversationId,
+            role: 'user',
+            content: message,
+            createdAt: timestamp,
+          }, authenticatedUserId);
+          
+          if (userMsgSaved) {
+            // Save assistant response
+            await conversationsDb.addMessageForUser({
+              id: crypto.randomUUID(),
+              conversationId,
+              role: 'assistant',
+              content: response.response,
+              createdAt: new Date().toISOString(),
+            }, authenticatedUserId);
+            // Update conversation model/service if changed
+            if (model || service) {
+              await conversationsDb.updateForUser(conversationId, authenticatedUserId, { model, service });
+            }
+          }
+        }
 
         return Response.json(response, { headers: corsHeaders });
       } catch (error) {
@@ -241,6 +776,842 @@ const server = Bun.serve({
             error: userMessage,
             response: userMessage, // Also include as response for consistent handling
           },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // Agent endpoints (require authentication)
+    // GET /v1/agents - List all agents for authenticated user
+    if (url.pathname === '/v1/agents' && req.method === 'GET') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const agents = await agentsDb.getAllForUser(authResult.userId);
+        return Response.json({ agents }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Agents fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agents fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch agents' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // POST /v1/agents - Create new agent
+    if (url.pathname === '/v1/agents' && req.method === 'POST') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const body = (await req.json()) as {
+          name?: string;
+          description?: string;
+          systemPrompt?: string;
+          model?: string;
+          service?: string;
+          temperature?: number;
+          maxTokens?: number;
+          maxIterations?: number;
+          tools?: string[];
+        };
+
+        if (!body.name || !body.systemPrompt) {
+          return Response.json(
+            { error: 'Name and system prompt are required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const now = new Date().toISOString();
+        const agent: Agent = {
+          id: crypto.randomUUID(),
+          userId: authResult.userId,
+          name: body.name,
+          description: body.description,
+          systemPrompt: body.systemPrompt,
+          model: body.model,
+          service: body.service,
+          temperature: body.temperature ?? 0.7,
+          maxTokens: body.maxTokens ?? 2000,
+          maxIterations: body.maxIterations ?? 5,
+          tools: body.tools ?? [],
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await agentsDb.create(agent);
+        return Response.json({ agent }, { status: 201, headers: corsHeaders });
+      } catch (error) {
+        console.error('Agent create error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agent create error' } });
+        return Response.json(
+          { error: 'Failed to create agent' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // GET /v1/agents/:id - Get agent details
+    if (url.pathname.match(/^\/v1\/agents\/[^/]+$/) && req.method === 'GET') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const agentId = url.pathname.split('/').pop();
+        if (!agentId) {
+          return Response.json(
+            { error: 'Agent ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const agent = await agentsDb.getByIdForUser(agentId, authResult.userId);
+        if (!agent) {
+          return Response.json(
+            { error: 'Agent not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        return Response.json({ agent }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Agent fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agent fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch agent' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // PATCH /v1/agents/:id - Update agent
+    if (url.pathname.match(/^\/v1\/agents\/[^/]+$/) && req.method === 'PATCH') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const agentId = url.pathname.split('/').pop();
+        if (!agentId) {
+          return Response.json(
+            { error: 'Agent ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const body = (await req.json()) as Partial<Omit<Agent, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>;
+
+        const updated = await agentsDb.updateForUser(agentId, authResult.userId, body);
+        if (!updated) {
+          return Response.json(
+            { error: 'Agent not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        const agent = await agentsDb.getByIdForUser(agentId, authResult.userId);
+        return Response.json({ agent }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Agent update error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agent update error' } });
+        return Response.json(
+          { error: 'Failed to update agent' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // DELETE /v1/agents/:id - Delete agent
+    if (url.pathname.match(/^\/v1\/agents\/[^/]+$/) && req.method === 'DELETE') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const agentId = url.pathname.split('/').pop();
+        if (!agentId) {
+          return Response.json(
+            { error: 'Agent ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const deleted = await agentsDb.deleteForUser(agentId, authResult.userId);
+        if (!deleted) {
+          return Response.json(
+            { error: 'Agent not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        return Response.json({ success: true, deletedId: agentId }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Agent delete error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Agent delete error' } });
+        return Response.json(
+          { error: 'Failed to delete agent' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // Team endpoints (require authentication)
+    // GET /v1/teams - List all teams for authenticated user
+    if (url.pathname === '/v1/teams' && req.method === 'GET') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const teams = await teamsDb.getAllForUser(authResult.userId);
+        return Response.json({ teams }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Teams fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Teams fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch teams' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // POST /v1/teams - Create new team
+    if (url.pathname === '/v1/teams' && req.method === 'POST') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const body = (await req.json()) as {
+          name?: string;
+          description?: string;
+          coordinatorAgentId?: string;
+          memberAgentIds?: string[];
+          executionMode?: 'sequential' | 'parallel';
+        };
+
+        if (!body.name || !body.coordinatorAgentId) {
+          return Response.json(
+            { error: 'Name and coordinator agent are required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        // Verify coordinator agent belongs to user
+        const coordinator = await agentsDb.getByIdForUser(body.coordinatorAgentId, authResult.userId);
+        if (!coordinator) {
+          return Response.json(
+            { error: 'Coordinator agent not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        // Verify all member agents belong to user
+        if (body.memberAgentIds && body.memberAgentIds.length > 0) {
+          for (const memberId of body.memberAgentIds) {
+            const member = await agentsDb.getByIdForUser(memberId, authResult.userId);
+            if (!member) {
+              return Response.json(
+                { error: `Member agent ${memberId} not found` },
+                { status: 404, headers: corsHeaders }
+              );
+            }
+          }
+        }
+
+        const now = new Date().toISOString();
+        const team: Team = {
+          id: crypto.randomUUID(),
+          userId: authResult.userId,
+          name: body.name,
+          description: body.description,
+          coordinatorAgentId: body.coordinatorAgentId,
+          memberAgentIds: body.memberAgentIds || [],
+          executionMode: body.executionMode || 'sequential',
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await teamsDb.create(team);
+        return Response.json({ team }, { status: 201, headers: corsHeaders });
+      } catch (error) {
+        console.error('Team create error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Team create error' } });
+        return Response.json(
+          { error: 'Failed to create team' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // GET /v1/teams/:id - Get team details
+    if (url.pathname.match(/^\/v1\/teams\/[^/]+$/) && req.method === 'GET') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const teamId = url.pathname.split('/').pop();
+        if (!teamId) {
+          return Response.json(
+            { error: 'Team ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const team = await teamsDb.getByIdForUser(teamId, authResult.userId);
+        if (!team) {
+          return Response.json(
+            { error: 'Team not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        // Load coordinator and member agents
+        const coordinator = await agentsDb.getByIdForUser(team.coordinatorAgentId, authResult.userId);
+        const members = await Promise.all(
+          team.memberAgentIds.map(id => agentsDb.getByIdForUser(id, authResult.userId))
+        );
+
+        return Response.json({ 
+          team, 
+          coordinator,
+          members: members.filter(Boolean),
+        }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Team fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Team fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch team' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // PATCH /v1/teams/:id - Update team
+    if (url.pathname.match(/^\/v1\/teams\/[^/]+$/) && req.method === 'PATCH') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const teamId = url.pathname.split('/').pop();
+        if (!teamId) {
+          return Response.json(
+            { error: 'Team ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const body = (await req.json()) as Partial<Omit<Team, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>;
+
+        const updated = await teamsDb.updateForUser(teamId, authResult.userId, body);
+        if (!updated) {
+          return Response.json(
+            { error: 'Team not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        const team = await teamsDb.getByIdForUser(teamId, authResult.userId);
+        return Response.json({ team }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Team update error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Team update error' } });
+        return Response.json(
+          { error: 'Failed to update team' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // DELETE /v1/teams/:id - Delete team
+    if (url.pathname.match(/^\/v1\/teams\/[^/]+$/) && req.method === 'DELETE') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const teamId = url.pathname.split('/').pop();
+        if (!teamId) {
+          return Response.json(
+            { error: 'Team ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const deleted = await teamsDb.deleteForUser(teamId, authResult.userId);
+        if (!deleted) {
+          return Response.json(
+            { error: 'Team not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        return Response.json({ success: true, deletedId: teamId }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Team delete error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Team delete error' } });
+        return Response.json(
+          { error: 'Failed to delete team' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // POST /v1/teams/:id/execute - Execute a task with a team
+    if (url.pathname.match(/^\/v1\/teams\/[^/]+\/execute$/) && req.method === 'POST') {
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const teamId = url.pathname.split('/')[3];
+        if (!teamId) {
+          return Response.json(
+            { error: 'Team ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const body = (await req.json()) as { task?: string };
+        if (!body.task) {
+          return Response.json(
+            { error: 'Task is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        // Load team
+        const team = await teamsDb.getByIdForUser(teamId, authResult.userId);
+        if (!team) {
+          return Response.json(
+            { error: 'Team not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        // Load coordinator and members
+        const coordinator = await agentsDb.getByIdForUser(team.coordinatorAgentId, authResult.userId);
+        if (!coordinator) {
+          return Response.json(
+            { error: 'Coordinator agent not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        const members = (await Promise.all(
+          team.memberAgentIds.map(id => agentsDb.getByIdForUser(id, authResult.userId))
+        )).filter((m): m is Agent => m !== null);
+
+        // Build team members info for the coordinator prompt
+        const teamMembers: ollama.TeamMember[] = members.map(m => ({
+          id: m.id,
+          name: m.name,
+          description: m.description,
+        }));
+
+        // Generate the team prompt for the coordinator
+        const teamPrompt = ollama.generateTeamPrompt(coordinator.systemPrompt, teamMembers);
+        
+        // Track execution steps for response
+        const steps: Array<{ agent: string; action: string; result: string }> = [];
+        const toolsUsed: string[] = [];
+        
+        // Select service based on coordinator config
+        const selectedService = coordinator.service === 'ghmodels' ? mistral : 
+                               coordinator.service === 'ollama' ? ollama : aiService;
+
+        // Execute coordinator with ReAct loop that handles delegation
+        const maxIterations = coordinator.maxIterations || 5;
+        const messages: Array<{ role: string; content: string }> = [
+          { role: 'system', content: teamPrompt },
+          { role: 'user', content: body.task },
+        ];
+
+        console.log(`🤝 Team execute: ${team.name} (coordinator: ${coordinator.name}, ${members.length} members)`);
+        console.log(`   Task: ${body.task.substring(0, 100)}...`);
+
+        for (let iteration = 1; iteration <= maxIterations; iteration++) {
+          console.log(`   📍 Team iteration ${iteration}/${maxIterations}`);
+
+          // Call coordinator
+          const response = await selectedService.chat({
+            message: messages[messages.length - 1].content,
+            systemPrompt: teamPrompt,
+            temperature: coordinator.temperature,
+            maxTokens: coordinator.maxTokens,
+            useTools: coordinator.tools?.includes('web_search'),
+            model: coordinator.model,
+          });
+
+          const responseText = response.response;
+          
+          // Check for final answer
+          const answer = ollama.parseAnswer(responseText);
+          if (answer) {
+            console.log(`   ✅ Team task completed`);
+            return Response.json({
+              response: answer,
+              team: team.name,
+              coordinator: coordinator.name,
+              steps,
+              toolsUsed: [...toolsUsed, ...(response.toolsUsed || [])],
+            }, { headers: corsHeaders });
+          }
+
+          // Check for delegation
+          const delegation = ollama.parseDelegation(responseText);
+          if (delegation) {
+            const member = members.find(m => m.id === delegation.agentId);
+            if (member) {
+              console.log(`   🔄 Delegating to ${member.name}: ${delegation.task.substring(0, 50)}...`);
+              toolsUsed.push(`delegate_to_agent(${member.name})`);
+              
+              // Execute member agent
+              const memberService = member.service === 'ghmodels' ? mistral : 
+                                   member.service === 'ollama' ? ollama : aiService;
+              
+              const memberResponse = await memberService.chat({
+                message: delegation.task,
+                systemPrompt: member.systemPrompt,
+                temperature: member.temperature,
+                maxTokens: member.maxTokens,
+                useTools: member.tools?.includes('web_search'),
+                model: member.model,
+              });
+
+              steps.push({
+                agent: member.name,
+                action: delegation.task,
+                result: memberResponse.response,
+              });
+
+              if (memberResponse.toolsUsed) {
+                toolsUsed.push(...memberResponse.toolsUsed);
+              }
+
+              // Add observation for coordinator
+              messages.push({ role: 'assistant', content: responseText });
+              messages.push({
+                role: 'user',
+                content: `<observation>Response from ${member.name}:\n${memberResponse.response}</observation>\n\nBased on this information, continue reasoning or provide your final answer in <answer> tags.`,
+              });
+              continue;
+            } else {
+              // Unknown agent ID
+              messages.push({ role: 'assistant', content: responseText });
+              messages.push({
+                role: 'user',
+                content: `<observation>Error: Agent with ID "${delegation.agentId}" not found in team.</observation>\n\nPlease try a different agent or provide your final answer.`,
+              });
+              continue;
+            }
+          }
+
+          // No structured output - treat as final response
+          console.log(`   ⚠️ No structured tags, treating as final`);
+          return Response.json({
+            response: responseText,
+            team: team.name,
+            coordinator: coordinator.name,
+            steps,
+            toolsUsed: [...toolsUsed, ...(response.toolsUsed || [])],
+          }, { headers: corsHeaders });
+        }
+
+        // Max iterations reached
+        return Response.json({
+          response: 'Max iterations reached. The team was unable to complete the task within the allowed steps.',
+          team: team.name,
+          coordinator: coordinator.name,
+          steps,
+          toolsUsed,
+          error: 'max_iterations_reached',
+        }, { headers: corsHeaders });
+
+      } catch (error) {
+        console.error('Team execute error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Team execute error' } });
+        return Response.json(
+          { error: 'Failed to execute team task' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // Conversation endpoints (require authentication)
+    // GET /v1/conversations - List all conversations for authenticated user
+    if (url.pathname === '/v1/conversations' && req.method === 'GET') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const conversations = await conversationsDb.getAllForUser(authResult.userId);
+        return Response.json({ conversations }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversations fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversations fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch conversations' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // POST /v1/conversations - Create new conversation for authenticated user
+    if (url.pathname === '/v1/conversations' && req.method === 'POST') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const body = (await req.json()) as {
+          title?: string;
+          model?: string;
+          service?: string;
+          agentId?: string;
+        };
+
+        // If agentId is provided, verify it belongs to the user
+        let agent: Agent | null = null;
+        if (body.agentId) {
+          agent = await agentsDb.getByIdForUser(body.agentId, authResult.userId);
+          if (!agent) {
+            return Response.json(
+              { error: 'Agent not found' },
+              { status: 404, headers: corsHeaders }
+            );
+          }
+        }
+
+        const now = new Date().toISOString();
+        const conversation: Conversation = {
+          id: crypto.randomUUID(),
+          userId: authResult.userId,
+          agentId: body.agentId,
+          title: body.title || (agent ? `Chat with ${agent.name}` : 'New Conversation'),
+          model: body.model || agent?.model,
+          service: body.service || agent?.service,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await conversationsDb.create(conversation);
+        return Response.json({ conversation, agent }, { status: 201, headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversation create error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation create error' } });
+        return Response.json(
+          { error: 'Failed to create conversation' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // GET /v1/conversations/:id - Get conversation with messages (user-scoped)
+    if (url.pathname.match(/^\/v1\/conversations\/[^/]+$/) && req.method === 'GET') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const conversationId = url.pathname.split('/').pop();
+        if (!conversationId) {
+          return Response.json(
+            { error: 'Conversation ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const conversation = await conversationsDb.getByIdForUser(conversationId, authResult.userId);
+        if (!conversation) {
+          return Response.json(
+            { error: 'Conversation not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        // Load agent info if conversation has an agent
+        let agent: Agent | null = null;
+        if (conversation.agentId) {
+          agent = await agentsDb.getById(conversation.agentId);
+        }
+
+        const messages = await conversationsDb.getMessagesForUser(conversationId, authResult.userId);
+        return Response.json({ conversation, messages, agent }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversation fetch error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation fetch error' } });
+        return Response.json(
+          { error: 'Failed to fetch conversation' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // PATCH /v1/conversations/:id - Update conversation (user-scoped)
+    if (url.pathname.match(/^\/v1\/conversations\/[^/]+$/) && req.method === 'PATCH') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const conversationId = url.pathname.split('/').pop();
+        if (!conversationId) {
+          return Response.json(
+            { error: 'Conversation ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const body = (await req.json()) as {
+          title?: string;
+          model?: string;
+          service?: string;
+        };
+
+        const updated = await conversationsDb.updateForUser(conversationId, authResult.userId, body);
+        if (!updated) {
+          return Response.json(
+            { error: 'Conversation not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        const conversation = await conversationsDb.getByIdForUser(conversationId, authResult.userId);
+        return Response.json({ conversation }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversation update error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation update error' } });
+        return Response.json(
+          { error: 'Failed to update conversation' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // DELETE /v1/conversations/:id - Delete conversation (user-scoped)
+    if (url.pathname.match(/^\/v1\/conversations\/[^/]+$/) && req.method === 'DELETE') {
+      // Require authentication
+      const authHeader = req.headers.get('Authorization');
+      const authResult = await verifyToken(authHeader);
+      if (!authResult) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const conversationId = url.pathname.split('/').pop();
+        if (!conversationId) {
+          return Response.json(
+            { error: 'Conversation ID is required' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const deleted = await conversationsDb.deleteForUser(conversationId, authResult.userId);
+        if (!deleted) {
+          return Response.json(
+            { error: 'Conversation not found' },
+            { status: 404, headers: corsHeaders }
+          );
+        }
+
+        return Response.json({ success: true, deletedId: conversationId }, { headers: corsHeaders });
+      } catch (error) {
+        console.error('Conversation delete error:', error);
+        Sentry.captureException(error, { extra: { url: req.url, method: req.method, message: 'Conversation delete error' } });
+        return Response.json(
+          { error: 'Failed to delete conversation' },
           { status: 500, headers: corsHeaders }
         );
       }
