@@ -33,6 +33,7 @@ export interface ChatRequest {
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
+  maxIterations?: number;  // Max ReAct loop iterations for agentic execution
   useTools?: boolean;
 }
 
@@ -124,10 +125,10 @@ export async function chat(request: ChatRequest & { model?: string }): Promise<C
   messages.push({ role: 'user', content: request.message });
 
   const toolsUsed: string[] = [];
-  const maxIterations = 5; // Prevent infinite loops
+  const maxIter = request.maxIterations ?? 5; // Prevent infinite loops
   let iterations = 0;
 
-  while (iterations < maxIterations) {
+  while (iterations < maxIter) {
     iterations++;
 
     const modelToUse = request.model || 'mistral-ai/Ministral-3B';

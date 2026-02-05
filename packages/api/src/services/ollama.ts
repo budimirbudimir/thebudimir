@@ -2,6 +2,29 @@ import sharp from 'sharp';
 import type { ChatRequest, ChatResponse } from './mistral';
 import { formatSearchResults, webSearch } from './search';
 
+// ReAct-style prompt for agentic execution
+const REACT_SYSTEM_PROMPT = `You are an AI assistant that can use tools to help answer questions.
+
+For each step, you should:
+1. Think about what you need to do
+2. If you need information, use a tool
+3. Observe the results
+4. Repeat until you can provide a final answer
+
+Available tools:
+- web_search: Search the web for current information. Usage: <action tool="web_search">your search query</action>
+
+Response format:
+- To think: <think>your reasoning here</think>
+- To use a tool: <action tool="tool_name">parameters</action>
+- To provide final answer: <answer>your complete response to the user</answer>
+
+IMPORTANT:
+- Always wrap your final response in <answer> tags
+- You may use multiple tools before answering
+- If you don't need tools, go directly to <answer>
+`;
+
 // OLLAMA_URL can be:
 // - http://localhost:11434 (default, direct Ollama access)
 // - https://localhost:8443 (HTTPS proxy for browser access from production sites)
@@ -182,91 +205,66 @@ async function optimizeImage(base64Data: string, format: string): Promise<string
   }
 }
 
-export async function chat(request: ChatRequest & { model?: string }): Promise<ChatResponse> {
-  const messages: Array<{ role: string; content: string | string[]; images?: string[] }> = [];
-  const toolsUsed: string[] = [];
-
-  if (request.systemPrompt) {
-    messages.push({ role: 'system', content: request.systemPrompt });
+// Parse action tags from model output
+function parseAction(text: string): { tool: string; params: string } | null {
+  const actionMatch = text.match(/<action\s+tool="([^"]+)">(.*?)<\/action>/s);
+  if (actionMatch) {
+    return { tool: actionMatch[1], params: actionMatch[2].trim() };
   }
+  return null;
+}
 
-  // If web search is enabled, perform search and add context
-  if (request.useTools) {
+// Parse answer tags from model output
+function parseAnswer(text: string): string | null {
+  const answerMatch = text.match(/<answer>(.*?)<\/answer>/s);
+  return answerMatch ? answerMatch[1].trim() : null;
+}
+
+// Execute a tool and return the result
+async function executeTool(tool: string, params: string): Promise<string> {
+  if (tool === 'web_search') {
     try {
-      console.log(`🔍 Performing web search for: "${request.message}"`);
-      const searchResults = await webSearch(request.message);
-      const formattedResults = formatSearchResults(searchResults);
-
-      if (searchResults.numberOfResults > 0) {
-        toolsUsed.push(`web_search("${request.message}")`);
-        messages.push({
-          role: 'system',
-          content: `Here are current web search results that may help answer the user's question:\n\n${formattedResults}\n\nUse this information to provide an accurate, up-to-date answer.`,
-        });
-      }
+      console.log(`🔍 ReAct: Executing web_search("${params}")`);
+      const searchResults = await webSearch(params);
+      return formatSearchResults(searchResults);
     } catch (error) {
       console.error('Web search failed:', error);
-      // Continue without search results
+      return 'Error: Web search failed. Please try a different query.';
     }
   }
+  return `Error: Unknown tool "${tool}"`;
+}
 
-  // Handle image in user message
-  if (request.imageData) {
-    // Extract base64 data from data URL (remove "data:image/xxx;base64," prefix)
-    const parts = request.imageData.split(',');
-    if (parts.length < 2) {
-      console.error('Invalid image data - parts:', parts.length);
-      throw new Error('Invalid image data format. Expected data URL with base64.');
-    }
-    let base64Data = parts[1];
+// Make a single Ollama API call
+async function ollamaChat(
+  messages: Array<{ role: string; content: string | string[]; images?: string[] }>,
+  modelToUse: string,
+  temperature: number,
+  maxTokens: number
+): Promise<string> {
+  const response = await fetch(`${OLLAMA_URL}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: modelToUse,
+      messages,
+      stream: false,
+      options: { temperature, num_predict: maxTokens },
+    }),
+  });
 
-    // Detect image format from data URL prefix
-    const formatMatch = parts[0].match(/image\/(\w+)/);
-    const imageFormat = formatMatch ? formatMatch[1] : 'unknown';
-
-    console.log(`🖼️  Processing image:`);
-    console.log(`   - Format: ${imageFormat}`);
-    console.log(`   - Data URL prefix: ${parts[0].substring(0, 50)}...`);
-    console.log(
-      `   - Base64 length: ${base64Data.length} chars (${(base64Data.length / (1024 * 1024)).toFixed(2)}MB)`
-    );
-    console.log(`   - Message: "${request.message || 'What do you see in this image?'}"`);
-
-    // Validate image size (max 10MB of base64 data)
-    const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
-    if (base64Data.length > MAX_IMAGE_SIZE) {
-      const sizeMB = (base64Data.length / (1024 * 1024)).toFixed(1);
-      console.error(`   ❌ Image too large: ${sizeMB}MB`);
-      throw new Error(
-        `Image is too large (${sizeMB}MB base64). Please use an image smaller than 7MB.`
-      );
-    }
-
-    // Test if base64 is valid
-    try {
-      Buffer.from(base64Data, 'base64');
-      console.log(`   ✅ Base64 data is valid`);
-    } catch (e) {
-      console.error(`   ❌ Base64 data is invalid:`, e);
-      throw new Error('Invalid base64 image data');
-    }
-
-    // Optimize image for better performance (resize to 800x800 + compress)
-    try {
-      base64Data = await optimizeImage(base64Data, imageFormat);
-    } catch (error) {
-      console.error('Image optimization error:', error);
-      throw error;
-    }
-
-    messages.push({
-      role: 'user',
-      content: request.message || 'What do you see in this image?',
-      images: [base64Data], // Ollama expects array of base64 strings (without data URL prefix)
-    });
-  } else {
-    messages.push({ role: 'user', content: request.message });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
   }
+
+  const data = (await response.json()) as { message?: { content?: string } };
+  return data.message?.content || '';
+}
+
+export async function chat(request: ChatRequest & { model?: string; maxIterations?: number }): Promise<ChatResponse> {
+  const messages: Array<{ role: string; content: string | string[]; images?: string[] }> = [];
+  const toolsUsed: string[] = [];
 
   // Use vision model if image is present, or custom model if specified
   const modelToUse = request.model
@@ -275,51 +273,126 @@ export async function chat(request: ChatRequest & { model?: string }): Promise<C
       ? OLLAMA_VISION_MODEL
       : OLLAMA_MODEL;
 
+  const temperature = request.temperature ?? 0.7;
+  const maxTokens = request.maxTokens ?? 2000;
+  const maxIterations = request.maxIterations ?? 5;
+
+  // Handle image in user message
+  let imageBase64: string | undefined;
   if (request.imageData) {
-    console.log(`🤖 Using vision model: ${modelToUse}`);
-  }
+    const parts = request.imageData.split(',');
+    if (parts.length < 2) {
+      throw new Error('Invalid image data format. Expected data URL with base64.');
+    }
+    let base64Data = parts[1];
+    const formatMatch = parts[0].match(/image\/(\w+)/);
+    const imageFormat = formatMatch ? formatMatch[1] : 'unknown';
 
-  console.log(`📤 Sending to Ollama:`);
-  console.log(`   - Model: ${modelToUse}`);
-  console.log(`   - Messages: ${messages.length}`);
-  console.log(`   - Has images: ${messages.some((m) => m.images)}`);
-  if (request.imageData) {
-    console.log(
-      `   - Image count: ${messages.filter((m) => m.images).reduce((sum, m) => sum + (m.images?.length || 0), 0)}`
-    );
-  }
+    console.log(`🖼️  Processing image: ${imageFormat}`);
 
-  try {
-    const response = await fetch(`${OLLAMA_URL}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: modelToUse,
-        messages,
-        stream: false,
-        options: {
-          temperature: request.temperature ?? 0.7,
-          num_predict: request.maxTokens ?? 2000,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Ollama error response:', errorText);
-      throw new Error(`Ollama API error: ${response.status} ${response.statusText} - ${errorText}`);
+    const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+    if (base64Data.length > MAX_IMAGE_SIZE) {
+      throw new Error('Image is too large. Please use an image smaller than 7MB.');
     }
 
-    const data = (await response.json()) as {
-      message?: { content?: string };
-    };
+    Buffer.from(base64Data, 'base64'); // Validate
+    imageBase64 = await optimizeImage(base64Data, imageFormat);
+  }
 
+  // === ReAct Mode: Use tool loop when tools are enabled ===
+  if (request.useTools && !request.imageData) {
+    // Build ReAct system prompt with user's custom prompt
+    const systemPrompt = request.systemPrompt
+      ? `${request.systemPrompt}\n\n${REACT_SYSTEM_PROMPT}`
+      : REACT_SYSTEM_PROMPT;
+    
+    messages.push({ role: 'system', content: systemPrompt });
+    messages.push({ role: 'user', content: request.message });
+
+    console.log(`🤖 ReAct mode: Starting agentic loop (max ${maxIterations} iterations)`);
+
+    for (let iteration = 1; iteration <= maxIterations; iteration++) {
+      console.log(`   📍 Iteration ${iteration}/${maxIterations}`);
+
+      const response = await ollamaChat(messages, modelToUse, temperature, maxTokens);
+      
+      // Check for final answer
+      const answer = parseAnswer(response);
+      if (answer) {
+        console.log(`   ✅ Final answer received`);
+        return {
+          response: answer,
+          model: modelToUse,
+          toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
+        };
+      }
+
+      // Check for action (tool call)
+      const action = parseAction(response);
+      if (action) {
+        toolsUsed.push(`${action.tool}("${action.params}")`);
+        
+        // Add assistant's response with action
+        messages.push({ role: 'assistant', content: response });
+        
+        // Execute tool and add observation
+        const observation = await executeTool(action.tool, action.params);
+        messages.push({ 
+          role: 'user', 
+          content: `<observation>${observation}</observation>\n\nBased on this information, continue reasoning or provide your final answer in <answer> tags.`
+        });
+        
+        continue;
+      }
+
+      // No action or answer - model gave a direct response (treat as final)
+      console.log(`   ⚠️ No structured tags found, treating as final response`);
+      return {
+        response: response,
+        model: modelToUse,
+        toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
+      };
+    }
+
+    // Max iterations reached - ask for final answer
+    console.log(`   ⚠️ Max iterations reached, requesting final answer`);
+    messages.push({ 
+      role: 'user', 
+      content: 'Please provide your final answer now in <answer> tags based on what you have learned.' 
+    });
+    const finalResponse = await ollamaChat(messages, modelToUse, temperature, maxTokens);
+    const finalAnswer = parseAnswer(finalResponse) || finalResponse;
+    
     return {
-      response: data.message?.content || '',
+      response: finalAnswer,
       model: modelToUse,
       toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
+    };
+  }
+
+  // === Simple Mode: No ReAct loop ===
+  if (request.systemPrompt) {
+    messages.push({ role: 'system', content: request.systemPrompt });
+  }
+
+  if (imageBase64) {
+    messages.push({
+      role: 'user',
+      content: request.message || 'What do you see in this image?',
+      images: [imageBase64],
+    });
+    console.log(`🤖 Using vision model: ${modelToUse}`);
+  } else {
+    messages.push({ role: 'user', content: request.message });
+  }
+
+  console.log(`📤 Sending to Ollama (simple mode): ${modelToUse}`);
+
+  try {
+    const response = await ollamaChat(messages, modelToUse, temperature, maxTokens);
+    return {
+      response,
+      model: modelToUse,
     };
   } catch (error) {
     console.error('Ollama API call error:', error);

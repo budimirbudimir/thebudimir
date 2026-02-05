@@ -58,11 +58,19 @@ export async function initDb(): Promise<void> {
       service TEXT,
       temperature REAL DEFAULT 0.7,
       max_tokens INTEGER DEFAULT 2000,
+      max_iterations INTEGER DEFAULT 5,
       tools TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )
   `);
+
+  // Migration: Add max_iterations column if it doesn't exist
+  try {
+    await db.execute(`ALTER TABLE agents ADD COLUMN max_iterations INTEGER DEFAULT 5`);
+  } catch {
+    // Column already exists, ignore
+  }
 
   // Create index for faster agent lookups by user
   await db.execute(`

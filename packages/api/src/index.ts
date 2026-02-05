@@ -32,6 +32,7 @@ interface Agent {
   service?: string;
   temperature: number;
   maxTokens: number;
+  maxIterations: number;  // Max ReAct loop iterations (default: 5)
   tools: string[];  // Array of tool names, e.g. ["web_search"]
   createdAt: string;
   updatedAt: string;
@@ -54,6 +55,7 @@ const agentsDb = {
       service: row.service as string | undefined,
       temperature: row.temperature as number,
       maxTokens: row.max_tokens as number,
+      maxIterations: (row.max_iterations as number) ?? 5,
       tools: row.tools ? JSON.parse(row.tools as string) : [],
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
@@ -77,6 +79,7 @@ const agentsDb = {
       service: row.service as string | undefined,
       temperature: row.temperature as number,
       maxTokens: row.max_tokens as number,
+      maxIterations: (row.max_iterations as number) ?? 5,
       tools: row.tools ? JSON.parse(row.tools as string) : [],
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
@@ -100,6 +103,7 @@ const agentsDb = {
       service: row.service as string | undefined,
       temperature: row.temperature as number,
       maxTokens: row.max_tokens as number,
+      maxIterations: (row.max_iterations as number) ?? 5,
       tools: row.tools ? JSON.parse(row.tools as string) : [],
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
@@ -108,7 +112,7 @@ const agentsDb = {
 
   async create(agent: Agent): Promise<void> {
     await db.execute({
-      sql: 'INSERT INTO agents (id, user_id, name, description, system_prompt, model, service, temperature, max_tokens, tools, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      sql: 'INSERT INTO agents (id, user_id, name, description, system_prompt, model, service, temperature, max_tokens, max_iterations, tools, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       args: [
         agent.id,
         agent.userId,
@@ -119,6 +123,7 @@ const agentsDb = {
         agent.service || null,
         agent.temperature,
         agent.maxTokens,
+        agent.maxIterations,
         JSON.stringify(agent.tools),
         agent.createdAt,
         agent.updatedAt,
@@ -161,6 +166,10 @@ const agentsDb = {
     if (updates.maxTokens !== undefined) {
       fields.push('max_tokens = ?');
       args.push(updates.maxTokens);
+    }
+    if (updates.maxIterations !== undefined) {
+      fields.push('max_iterations = ?');
+      args.push(updates.maxIterations);
     }
     if (updates.tools !== undefined) {
       fields.push('tools = ?');
@@ -576,6 +585,7 @@ const server = Bun.serve({
         const effectiveSystemPrompt = systemPrompt || agent?.systemPrompt || 'You are a helpful assistant.';
         const effectiveTemperature = temperature ?? agent?.temperature;
         const effectiveMaxTokens = maxTokens ?? agent?.maxTokens;
+        const effectiveMaxIterations = agent?.maxIterations ?? 5;
         const effectiveModel = model || agent?.model;
         const effectiveService = service || (agent?.service as 'ollama' | 'ghmodels' | undefined);
         const effectiveUseTools = useWebSearch ?? useTools ?? (agent?.tools?.includes('web_search') ?? false);
@@ -598,6 +608,7 @@ const server = Bun.serve({
           systemPrompt: effectiveSystemPrompt,
           temperature: effectiveTemperature,
           maxTokens: effectiveMaxTokens,
+          maxIterations: effectiveMaxIterations,
           useTools: effectiveUseTools,
           model: effectiveModel,
         });
@@ -698,6 +709,7 @@ const server = Bun.serve({
           service?: string;
           temperature?: number;
           maxTokens?: number;
+          maxIterations?: number;
           tools?: string[];
         };
 
@@ -719,6 +731,7 @@ const server = Bun.serve({
           service: body.service,
           temperature: body.temperature ?? 0.7,
           maxTokens: body.maxTokens ?? 2000,
+          maxIterations: body.maxIterations ?? 5,
           tools: body.tools ?? [],
           createdAt: now,
           updatedAt: now,
