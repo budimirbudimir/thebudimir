@@ -8,5 +8,6 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths(), ghPages()],
   build: {
     outDir: '../../dist/main',
+    assetsDir: 'assets',
   },
 });
