@@ -33,7 +33,7 @@ const ThemeToggle = () => {
 };
 
 const App = () => (
-  <BrowserRouter>
+  <BrowserRouter basename={import.meta.env.BASE_URL}>
     <div className="app-container">
       <nav className="nav-bar">
         <Link to="/" className="nav-link">

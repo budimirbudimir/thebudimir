@@ -1,10 +1,32 @@
 import * as Sentry from '@sentry/bun';
-import { verifyToken } from '../auth';
+import { isAuthEnabled, verifyToken } from '../auth';
 import {
   conversationsDb,
   type Conversation,
 } from '../storage/conversations';
 import { agentsDb, type Agent } from '../storage/agents';
+
+// Helper function to get user ID based on auth status
+// Returns the userId if auth is disabled or if token is valid
+// Returns null if auth is enabled but token is invalid (caller should return 401)
+async function getUserId(req: Request): Promise<{ userId: string | null; isAuthRequired: boolean }> {
+  const authEnabled = isAuthEnabled();
+  
+  if (!authEnabled) {
+    // When auth is disabled, use a default user ID
+    return { userId: 'default-user', isAuthRequired: false };
+  }
+  
+  const authHeader = req.headers.get('Authorization');
+  const authResult = await verifyToken(authHeader);
+  
+  if (!authResult) {
+    // Auth is enabled but no valid token
+    return { userId: null, isAuthRequired: true };
+  }
+  
+  return { userId: authResult.userId, isAuthRequired: true };
+}
 
 export async function handleConversationRoutes(
   req: Request,
@@ -13,9 +35,10 @@ export async function handleConversationRoutes(
 ): Promise<Response | null> {
   // GET /v1/conversations - List all conversations for authenticated user
   if (url.pathname === '/v1/conversations' && req.method === 'GET') {
-    const authHeader = req.headers.get('Authorization');
-    const authResult = await verifyToken(authHeader);
-    if (!authResult) {
+    const { userId, isAuthRequired } = await getUserId(req);
+    
+    // If auth is required but no valid token, return 401
+    if (isAuthRequired && !userId) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 401, headers: corsHeaders },
@@ -23,7 +46,7 @@ export async function handleConversationRoutes(
     }
 
     try {
-      const conversations = await conversationsDb.getAllForUser(authResult.userId);
+      const conversations = await conversationsDb.getAllForUser(userId!);
       return Response.json({ conversations }, { headers: corsHeaders });
     } catch (error) {
       console.error('Conversations fetch error:', error);
@@ -39,9 +62,10 @@ export async function handleConversationRoutes(
 
   // POST /v1/conversations - Create new conversation for authenticated user
   if (url.pathname === '/v1/conversations' && req.method === 'POST') {
-    const authHeader = req.headers.get('Authorization');
-    const authResult = await verifyToken(authHeader);
-    if (!authResult) {
+    const { userId, isAuthRequired } = await getUserId(req);
+    
+    // If auth is required but no valid token, return 401
+    if (isAuthRequired && !userId) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 401, headers: corsHeaders },
@@ -59,7 +83,7 @@ export async function handleConversationRoutes(
       // If agentId is provided, verify it belongs to the user
       let agent: Agent | null = null;
       if (body.agentId) {
-        agent = await agentsDb.getByIdForUser(body.agentId, authResult.userId);
+        agent = await agentsDb.getByIdForUser(body.agentId, userId!);
         if (!agent) {
           return Response.json(
             { error: 'Agent not found' },
@@ -71,7 +95,7 @@ export async function handleConversationRoutes(
       const now = new Date().toISOString();
       const conversation: Conversation = {
         id: crypto.randomUUID(),
-        userId: authResult.userId,
+        userId: userId!,
         agentId: body.agentId,
         title: body.title || (agent ? `Chat with ${agent.name}` : 'New Conversation'),
         model: body.model || agent?.model,
@@ -96,9 +120,10 @@ export async function handleConversationRoutes(
 
   // GET /v1/conversations/:id - Get conversation with messages (user-scoped)
   if (url.pathname.match(/^\/v1\/conversations\/[^/]+$/) && req.method === 'GET') {
-    const authHeader = req.headers.get('Authorization');
-    const authResult = await verifyToken(authHeader);
-    if (!authResult) {
+    const { userId, isAuthRequired } = await getUserId(req);
+    
+    // If auth is required but no valid token, return 401
+    if (isAuthRequired && !userId) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 401, headers: corsHeaders },
@@ -116,7 +141,7 @@ export async function handleConversationRoutes(
 
       const conversation = await conversationsDb.getByIdForUser(
         conversationId,
-        authResult.userId,
+        userId!,
       );
       if (!conversation) {
         return Response.json(
@@ -133,7 +158,7 @@ export async function handleConversationRoutes(
 
       const messages = await conversationsDb.getMessagesForUser(
         conversationId,
-        authResult.userId,
+        userId!,
       );
       return Response.json({ conversation, messages, agent }, { headers: corsHeaders });
     } catch (error) {
@@ -150,9 +175,10 @@ export async function handleConversationRoutes(
 
   // PATCH /v1/conversations/:id - Update conversation (user-scoped)
   if (url.pathname.match(/^\/v1\/conversations\/[^/]+$/) && req.method === 'PATCH') {
-    const authHeader = req.headers.get('Authorization');
-    const authResult = await verifyToken(authHeader);
-    if (!authResult) {
+    const { userId, isAuthRequired } = await getUserId(req);
+    
+    // If auth is required but no valid token, return 401
+    if (isAuthRequired && !userId) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 401, headers: corsHeaders },
@@ -176,7 +202,7 @@ export async function handleConversationRoutes(
 
       const updated = await conversationsDb.updateForUser(
         conversationId,
-        authResult.userId,
+        userId!,
         body,
       );
       if (!updated) {
@@ -188,7 +214,7 @@ export async function handleConversationRoutes(
 
       const conversation = await conversationsDb.getByIdForUser(
         conversationId,
-        authResult.userId,
+        userId!,
       );
       return Response.json({ conversation }, { headers: corsHeaders });
     } catch (error) {
@@ -205,9 +231,10 @@ export async function handleConversationRoutes(
 
   // DELETE /v1/conversations/:id - Delete conversation (user-scoped)
   if (url.pathname.match(/^\/v1\/conversations\/[^/]+$/) && req.method === 'DELETE') {
-    const authHeader = req.headers.get('Authorization');
-    const authResult = await verifyToken(authHeader);
-    if (!authResult) {
+    const { userId, isAuthRequired } = await getUserId(req);
+    
+    // If auth is required but no valid token, return 401
+    if (isAuthRequired && !userId) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 401, headers: corsHeaders },
@@ -225,7 +252,7 @@ export async function handleConversationRoutes(
 
       const deleted = await conversationsDb.deleteForUser(
         conversationId,
-        authResult.userId,
+        userId!,
       );
       if (!deleted) {
         return Response.json(
