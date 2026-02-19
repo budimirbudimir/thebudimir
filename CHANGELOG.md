@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/budimirbudimir/thebudimir/compare/v1.18.0...v1.19.0) (2026-02-19)
+
+
+### Features
+
+* fix convo persistence and add patch for router ([#63](https://github.com/budimirbudimir/thebudimir/issues/63)) ([9d548d4](https://github.com/budimirbudimir/thebudimir/commit/9d548d4425756ed14d1ce5bb34d77cbf86ceacb0))
+
 # [1.18.0](https://github.com/budimirbudimir/thebudimir/compare/v1.17.0...v1.18.0) (2026-02-05)
 
 
