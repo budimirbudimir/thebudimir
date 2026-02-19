@@ -1,0 +1,11 @@
+node_modules
+dist
+docs
+.git
+.gitignore
+*.md
+.DS_Store
+*.local
+.biome-cache
+package-lock.json
+yarn.lock

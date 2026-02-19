@@ -1,0 +1,14 @@
+node_modules
+.DS_Store
+dist
+dist-ssr
+docs
+*.local
+.env
+.env.local
+.biome-cache
+packages/api/certs
+packages/api/data
+*.db
+*.db-shm
+*.db-wal
