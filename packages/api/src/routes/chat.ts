@@ -16,7 +16,9 @@ export async function handleChatRoute(
 
   // Verify authentication if enabled
   let authenticatedUserId: string | null = null;
-  if (isAuthEnabled()) {
+  const authEnabled = isAuthEnabled();
+  
+  if (authEnabled) {
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
 
@@ -28,6 +30,11 @@ export async function handleChatRoute(
     }
     authenticatedUserId = authResult.userId;
     console.log(`✅ Authenticated request from user: ${authResult.userId}`);
+  } else {
+    // When auth is disabled, use a default user ID for persistence
+    // This allows the app to work in development mode without Clerk authentication
+    authenticatedUserId = 'default-user';
+    console.log('🔓 Auth disabled - using default user ID for persistence');
   }
 
   if (!aiService.isConfigured()) {
@@ -120,6 +127,15 @@ export async function handleChatRoute(
     });
 
     // Persist messages if conversationId is provided and user is authenticated (text only, no images)
+    // DEBUG: Log the conditions for debugging persistence issues
+    console.log('[Chat Persistence Debug]', {
+      conversationId,
+      hasImageData: !!imageData,
+      authenticatedUserId,
+      isAuthEnabled: isAuthEnabled(),
+      willPersist: !!(conversationId && !imageData && authenticatedUserId),
+    });
+
     if (conversationId && !imageData && authenticatedUserId) {
       const timestamp = new Date().toISOString();
       // Save user message (verifies conversation ownership)
@@ -153,7 +169,12 @@ export async function handleChatRoute(
             service,
           });
         }
+        console.log('✅ Messages persisted to database');
+      } else {
+        console.warn('⚠️ Failed to save user message - conversation ownership verification failed');
       }
+    } else if (conversationId && !imageData && !authenticatedUserId) {
+      console.warn('⚠️ Messages NOT persisted: authenticatedUserId is null (auth is disabled or token missing)');
     }
 
     return Response.json(response, { headers: corsHeaders });
