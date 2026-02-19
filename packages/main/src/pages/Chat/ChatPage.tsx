@@ -129,7 +129,9 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [useWebSearch, setUseWebSearch] = useState(false);
   const [chatMode, setChatMode] = useState<'single' | 'team'>('single');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -278,9 +280,20 @@ export default function Chat() {
     setImageWarning(null);
   };
 
+  const handleAbort = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!input.trim() && !selectedImage) || isLoading) return;
+
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
 
     const userMessageContent = input.trim() || 'What do you see in this image?';
 
@@ -348,6 +361,7 @@ export default function Chat() {
             ...(token && { Authorization: `Bearer ${token}` }),
           },
           body: JSON.stringify({ task: userMessageContent }),
+          signal: abortControllerRef.current.signal,
         });
 
         const data = (await response.json()) as TeamExecuteResult & { error?: string };
@@ -391,6 +405,7 @@ export default function Chat() {
           service: selectedService,
           conversationId: imageDataToSend ? undefined : convId, // Don't persist image chats
         }),
+        signal: abortControllerRef.current.signal,
       });
 
       const data = (await response.json()) as { response?: string; error?: string };
@@ -416,6 +431,11 @@ export default function Chat() {
         setMessages((prev) => [...prev, assistantMessage]);
       }
     } catch (err) {
+      // Ignore abort errors - user intentionally cancelled
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('Request aborted by user');
+        return;
+      }
       // Network or parsing errors - show as assistant message
       const errorMessage: Message = {
         role: 'assistant',
@@ -426,6 +446,7 @@ export default function Chat() {
       setMessages((prev) => [...prev, errorMessage]);
       console.error('Chat error:', err);
     } finally {
+      abortControllerRef.current = null;
       setIsLoading(false);
     }
   };
@@ -451,6 +472,7 @@ export default function Chat() {
   const openConversation = async (conversation: Conversation) => {
     setCurrentConversationId(conversation.id);
     setActiveView('chat');
+    setIsLoadingMessages(true);
     
     // Restore model/service from conversation if available
     if (conversation.model) {
@@ -479,6 +501,8 @@ export default function Chat() {
       }
     } catch (error) {
       console.error('Failed to load conversation:', error);
+    } finally {
+      setIsLoadingMessages(false);
     }
   };
 
@@ -1082,7 +1106,14 @@ export default function Chat() {
       >
         <ScrollArea style={{ flex: 1 }} viewportRef={viewport} mb="md">
           <Stack gap="md" p="md">
-            {messages.length === 0 && (
+            {isLoadingMessages && (
+              <Box ta="center" py="md">
+                <Loader color="violet" size="sm" />
+                <Text size="sm" c="dimmed" mt="xs">Loading conversation...</Text>
+              </Box>
+            )}
+
+            {messages.length === 0 && !isLoadingMessages && (
               <Box ta="center" py="xl">
                 <Text size="lg" c="dimmed">
                   {currentAgent
@@ -1467,20 +1498,33 @@ export default function Chat() {
                   },
                 }}
               />
-              <Button
-                type="submit"
-                disabled={isLoading || (!input.trim() && !selectedImage)}
-                size="md"
-                leftSection={isLoading ? <Loader size="xs" color="white" /> : undefined}
-                style={{
-                  background: isLoading || (!input.trim() && !selectedImage) 
-                    ? '#4c1d95' 
-                    : 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
-                  border: 'none',
-                }}
-              >
-                {isLoading ? 'Sending...' : 'Send'}
-              </Button>
+              {isLoading ? (
+                <Button
+                  onClick={handleAbort}
+                  size="md"
+                  color="red"
+                  style={{
+                    background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+                    border: 'none',
+                  }}
+                >
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={!input.trim() && !selectedImage}
+                  size="md"
+                  style={{
+                    background: !input.trim() && !selectedImage
+                      ? '#4c1d95'
+                      : 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+                    border: 'none',
+                  }}
+                >
+                  Send
+                </Button>
+              )}
             </Group>
           </form>
         </Box>
