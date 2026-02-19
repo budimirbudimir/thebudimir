@@ -1,3 +1,10 @@
+## [1.19.2](https://github.com/budimirbudimir/thebudimir/compare/v1.19.1...v1.19.2) (2026-02-19)
+
+
+### Bug Fixes
+
+* build file paths ([#65](https://github.com/budimirbudimir/thebudimir/issues/65)) ([1bedade](https://github.com/budimirbudimir/thebudimir/commit/1bedadeef4a3521b314272330e6cd04517eca5d7))
+
 ## [1.19.1](https://github.com/budimirbudimir/thebudimir/compare/v1.19.0...v1.19.1) (2026-02-19)
 
 
