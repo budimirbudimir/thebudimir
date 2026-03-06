@@ -1,4 +1,4 @@
-import { Alert, Button, Container, Group, Paper, Title } from '@mantine/core';
+import { Alert, Badge, Button, Container, Group, Paper, Title } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ChatInputBar from './components/ChatInputBar';
@@ -74,6 +74,7 @@ export default function Chat() {
   };
 
   const handleOpenConversation = async (conversation: Conversation) => {
+    chat.setIsPrivate(conversation.isPrivate ?? false);
     setActiveView('chat');
     await conversationsHook.openConversation(conversation, {
       setMessages: chat.setMessages,
@@ -135,6 +136,11 @@ export default function Chat() {
             ← Back to Conversations
           </Button>
           <Title order={1}>AI Chat</Title>
+          {chat.isPrivate && (
+            <Badge color="yellow" variant="light" size="lg">
+              🔒 Private
+            </Badge>
+          )}
         </Group>
         <Button component={Link} to="/" variant="subtle">
           Home
@@ -145,7 +151,15 @@ export default function Chat() {
         shadow="sm"
         p="md"
         withBorder
-        style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}
+        style={{
+          height: 'calc(100vh - 200px)',
+          display: 'flex',
+          flexDirection: 'column',
+          ...(chat.isPrivate && {
+            borderColor: '#ca8a04',
+            borderLeft: '3px solid #ca8a04',
+          }),
+        }}
       >
         <ChatMessageList
           messages={chat.messages}

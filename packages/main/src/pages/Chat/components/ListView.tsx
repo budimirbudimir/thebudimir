@@ -164,6 +164,11 @@ export default function ListView({
                       style={{
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
+                        ...(conversation.isPrivate && {
+                          borderColor: '#ca8a04',
+                          borderLeft: '3px solid #ca8a04',
+                          background: 'rgba(202, 138, 4, 0.05)',
+                        }),
                       }}
                       onClick={() => onOpenConversation(conversation)}
                     >

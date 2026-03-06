@@ -2,8 +2,13 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
 // --- Mocks ---
 
-const mockDbExecute = mock(() =>
-  Promise.resolve({ rows: [], columns: [], rowsAffected: 0, lastInsertRowid: 0n })
+const mockDbExecute = mock(
+  (_query: { sql: string; args: unknown[] }): Promise<{
+    rows: Record<string, unknown>[];
+    columns: string[];
+    rowsAffected: number;
+    lastInsertRowid: bigint;
+  }> => Promise.resolve({ rows: [], columns: [], rowsAffected: 0, lastInsertRowid: 0n })
 );
 mock.module('../db', () => ({
   db: { execute: mockDbExecute },
