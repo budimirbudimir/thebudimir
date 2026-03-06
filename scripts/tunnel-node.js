@@ -32,7 +32,20 @@ if (subdomain) {
   console.log('   Tip: Set TUNNEL_SUBDOMAIN env var for custom URL');
 }
 
-(async () => {
+const MAX_RETRIES = 10;
+const BASE_DELAY_MS = 3000;
+
+let shuttingDown = false;
+
+process.on('SIGINT', () => {
+  shuttingDown = true;
+  console.log('\n🛑 Shutting down...');
+  process.exit(0);
+});
+
+async function startTunnel(attempt = 1) {
+  if (shuttingDown) return;
+
   try {
     const tunnel = await localtunnel(options);
 
@@ -56,18 +69,30 @@ if (subdomain) {
     console.log('Press Ctrl+C to stop the tunnel...');
 
     tunnel.on('close', () => {
-      console.log('\n👋 Tunnel closed');
-      process.exit(0);
+      if (shuttingDown) {
+        console.log('\n👋 Tunnel closed');
+        process.exit(0);
+      }
+      console.log('\n⚠️  Tunnel closed unexpectedly, reconnecting...');
+      startTunnel(1);
     });
 
-    // Handle graceful shutdown
-    process.on('SIGINT', () => {
-      console.log('\n🛑 Shutting down tunnel...');
+    tunnel.on('error', (err) => {
+      console.error(`\n⚠️  Tunnel error: ${err.message}`);
       tunnel.close();
     });
 
   } catch (err) {
-    console.error('❌ Failed to create tunnel:', err.message);
-    process.exit(1);
+    if (attempt > MAX_RETRIES) {
+      console.error(`❌ Failed after ${MAX_RETRIES} attempts: ${err.message}`);
+      process.exit(1);
+    }
+    const delay = Math.min(BASE_DELAY_MS * 2 ** (attempt - 1), 60000);
+    console.error(`⚠️  Attempt ${attempt}/${MAX_RETRIES} failed: ${err.message}`);
+    console.log(`   Retrying in ${(delay / 1000).toFixed(0)}s...`);
+    await new Promise((r) => setTimeout(r, delay));
+    return startTunnel(attempt + 1);
   }
-})();
+}
+
+startTunnel();

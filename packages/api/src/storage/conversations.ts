@@ -1,4 +1,16 @@
 import { db } from '../db';
+import { encrypt, decrypt, isEncryptionConfigured } from '../crypto';
+
+/**
+ * Check if a string looks like encrypted data (hex string with expected length)
+ * Encrypted content is: iv(16) + authTag(16) + ciphertext = 32 chars + ciphertext
+ * Minimum encrypted hex length would be around 32 hex chars for very short messages
+ */
+function looksLikeEncrypted(content: string): boolean {
+  // Must be even length (hex) and at least 32 chars (minimum encrypted size)
+  // Also check if it matches hex pattern
+  return /^[0-9a-fA-F]+$/.test(content) && content.length >= 32;
+}
 
 export interface Conversation {
   id: string;
@@ -123,19 +135,45 @@ export const conversationsDb = {
       sql: 'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
       args: [conversationId],
     });
-    return result.rows.map((row) => ({
-      id: row.id as string,
-      conversationId: row.conversation_id as string,
-      role: row.role as 'user' | 'assistant',
-      content: row.content as string,
-      createdAt: row.created_at as string,
-    }));
+
+    // Only try to decrypt if encryption is configured AND content looks encrypted
+    // This handles backward compatibility with existing plain-text messages
+    const decryptEnabled = isEncryptionConfigured();
+
+    return result.rows.map((row) => {
+      const rawContent = row.content as string;
+      let finalContent = rawContent;
+
+      if (decryptEnabled && looksLikeEncrypted(rawContent)) {
+        try {
+          finalContent = decrypt(rawContent);
+        } catch (decryptError) {
+          // If decryption fails, fall back to plain text (might be old unencrypted data)
+          console.warn('Decryption failed, using raw content:', decryptError);
+          finalContent = rawContent;
+        }
+      }
+
+      return {
+        id: row.id as string,
+        conversationId: row.conversation_id as string,
+        role: row.role as 'user' | 'assistant',
+        content: finalContent,
+        createdAt: row.created_at as string,
+      };
+    });
   },
+
+
 
   async addMessageForUser(message: ConversationMessage, userId: string): Promise<boolean> {
     // First verify the conversation belongs to the user
     const conv = await this.getByIdForUser(message.conversationId, userId);
     if (!conv) return false;
+
+    // Encrypt content if encryption is configured
+    const shouldEncrypt = isEncryptionConfigured();
+    const encryptedContent = shouldEncrypt ? encrypt(message.content) : message.content;
 
     await db.execute({
       sql: 'INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -143,7 +181,7 @@ export const conversationsDb = {
         message.id,
         message.conversationId,
         message.role,
-        message.content,
+        encryptedContent,
         message.createdAt,
       ],
     });
@@ -154,4 +192,5 @@ export const conversationsDb = {
     });
     return true;
   },
+
 };

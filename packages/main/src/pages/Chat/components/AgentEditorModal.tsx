@@ -15,7 +15,7 @@ import {
   TextInput,
   Group,
 } from '@mantine/core';
-import type { Agent, ModelsResponse } from '../ChatPage';
+import type { Agent, ModelsResponse } from '../types';
 
 interface AgentEditorModalProps {
   opened: boolean;

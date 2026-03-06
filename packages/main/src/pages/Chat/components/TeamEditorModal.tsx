@@ -12,7 +12,7 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
-import type { Agent, Team } from '../ChatPage';
+import type { Agent, Team } from '../types';
 
 interface TeamEditorModalProps {
   opened: boolean;
