@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import { useCallback, useMemo } from 'react';
 
 export interface ChatApiEndpoints {
   chat: string;
@@ -17,9 +17,7 @@ export interface ChatApi {
 export function useChatApi(): ChatApi {
   const { getToken } = useAuth();
 
-  const apiBase = import.meta.env.PROD
-    ? 'https://api.thebudimir.com'
-    : 'http://localhost:3000';
+  const apiBase = import.meta.env.PROD ? 'https://api.thebudimir.com' : 'http://localhost:3000';
 
   const endpoints = useMemo<ChatApiEndpoints>(
     () => ({
@@ -29,7 +27,7 @@ export function useChatApi(): ChatApi {
       agents: `${apiBase}/v1/agents`,
       teams: `${apiBase}/v1/teams`,
     }),
-    [],
+    []
   );
 
   const authFetch = useCallback(
@@ -41,7 +39,7 @@ export function useChatApi(): ChatApi {
       }
       return fetch(url, { ...options, headers });
     },
-    [getToken],
+    [getToken]
   );
 
   return { endpoints, authFetch };

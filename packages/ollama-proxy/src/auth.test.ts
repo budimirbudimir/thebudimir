@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, mock } from 'bun:test';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
 // Mock @clerk/backend before importing auth module
 const mockClerkVerifyToken = mock(() => Promise.resolve({ sub: 'user_test123' }));
@@ -16,7 +16,7 @@ describe('Ollama Proxy Auth Module', () => {
   describe('isAuthEnabled', () => {
     test('returns correct value based on CLERK_SECRET_KEY', () => {
       const result = isAuthEnabled();
-      
+
       if (process.env.CLERK_SECRET_KEY) {
         expect(result).toBe(true);
       } else {
@@ -45,9 +45,9 @@ describe('Ollama Proxy Auth Module', () => {
       }
 
       mockClerkVerifyToken.mockResolvedValueOnce({ sub: 'user_proxy_123' });
-      
+
       const result = await verifyToken('Bearer proxy_token_abc');
-      
+
       expect(result).toEqual({ userId: 'user_proxy_123' });
       expect(mockClerkVerifyToken).toHaveBeenCalledWith('proxy_token_abc', {
         secretKey: process.env.CLERK_SECRET_KEY,
@@ -61,9 +61,9 @@ describe('Ollama Proxy Auth Module', () => {
       }
 
       mockClerkVerifyToken.mockResolvedValueOnce({ sub: 'user_direct_token' });
-      
+
       const result = await verifyToken('direct_token_xyz');
-      
+
       expect(result).toEqual({ userId: 'user_direct_token' });
       expect(mockClerkVerifyToken).toHaveBeenCalledWith('direct_token_xyz', {
         secretKey: process.env.CLERK_SECRET_KEY,
@@ -77,9 +77,9 @@ describe('Ollama Proxy Auth Module', () => {
       }
 
       mockClerkVerifyToken.mockRejectedValueOnce(new Error('Token expired'));
-      
+
       const result = await verifyToken('expired_token');
-      
+
       expect(result).toBeNull();
     });
 
@@ -88,9 +88,9 @@ describe('Ollama Proxy Auth Module', () => {
         console.log('⏭️  Skipping test - CLERK_SECRET_KEY is configured');
         return;
       }
-      
+
       const result = await verifyToken('Bearer test_token');
-      
+
       expect(result).toBeNull();
       expect(mockClerkVerifyToken).not.toHaveBeenCalled();
     });

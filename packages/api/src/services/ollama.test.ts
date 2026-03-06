@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 
 describe('Ollama service', () => {
   describe('isConfigured', () => {
@@ -273,6 +273,91 @@ describe('Ollama service', () => {
       expect(() => Buffer.from(invalidBase64, 'base64')).not.toThrow();
     });
   });
+  describe('chat function conversation history', () => {
+    test('adds conversation history to messages when history is provided', async () => {
+      const capturedMessages: unknown[] = [];
+      const mockOllamaChat = mock(async (messages: unknown[]) => {
+        capturedMessages.push(...messages);
+        return 'mocked response';
+      });
+      mock.module('./ollama/client', () => ({ ollamaChat: mockOllamaChat }));
+      mock.module('./ollama/images', () => ({ optimizeImage: mock() }));
+
+      // Re-require to pick up the mocked module
+      const { chat } = require('./ollama/chat');
+
+      const history = [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi there!' },
+      ];
+
+      await chat({ message: 'How are you?', history });
+
+      // History messages should appear before the user message
+      const roles = capturedMessages.map((m: any) => m.role);
+      expect(roles).toContain('user');
+      expect(roles).toContain('assistant');
+
+      const historyUser = capturedMessages.find(
+        (m: any) => m.role === 'user' && m.content === 'Hello'
+      );
+      const historyAssistant = capturedMessages.find(
+        (m: any) => m.role === 'assistant' && m.content === 'Hi there!'
+      );
+      expect(historyUser).toBeDefined();
+      expect(historyAssistant).toBeDefined();
+
+      // The final user message should be the current one
+      const lastMsg = capturedMessages[capturedMessages.length - 1] as any;
+      expect(lastMsg.role).toBe('user');
+      expect(lastMsg.content).toBe('How are you?');
+    });
+
+    test('handles missing conversation history gracefully', async () => {
+      const capturedMessages: unknown[] = [];
+      const mockOllamaChat = mock(async (messages: unknown[]) => {
+        capturedMessages.push(...messages);
+        return 'mocked response';
+      });
+      mock.module('./ollama/client', () => ({ ollamaChat: mockOllamaChat }));
+      mock.module('./ollama/images', () => ({ optimizeImage: mock() }));
+
+      const { chat } = require('./ollama/chat');
+
+      await chat({ message: 'Hello' });
+
+      // Should only contain the current user message (no history entries)
+      const userMessages = capturedMessages.filter((m: any) => m.role === 'user');
+      expect(userMessages).toHaveLength(1);
+      expect((userMessages[0] as any).content).toBe('Hello');
+    });
+
+    test('logs when adding previous messages to ReAct context', async () => {
+      const logs: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+      const mockOllamaChat = mock(async () => '<answer>test</answer>');
+      mock.module('./ollama/client', () => ({ ollamaChat: mockOllamaChat }));
+      mock.module('./ollama/images', () => ({ optimizeImage: mock() }));
+
+      const { chat } = require('./ollama/chat');
+
+      const history = [
+        { role: 'user', content: 'previous question' },
+        { role: 'assistant', content: 'previous answer' },
+      ];
+
+      await chat({ message: 'new question', history, useTools: true });
+
+      console.log = originalLog;
+
+      const historyLog = logs.find((l) => l.includes('previous messages to ReAct context'));
+      expect(historyLog).toBeDefined();
+      expect(historyLog).toContain('2');
+    });
+  });
+
   describe('chat function image validation', () => {
     test('throws error for invalid image data format in request.imageData', async () => {
       const { chat } = require('./ollama');

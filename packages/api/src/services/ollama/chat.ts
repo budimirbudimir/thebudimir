@@ -1,13 +1,13 @@
 import type { ChatRequest, ChatResponse } from '../mistral';
-import { optimizeImage } from './images';
 import { ollamaChat } from './client';
-import { REACT_SYSTEM_PROMPT } from './prompt';
-import { parseAction, parseAnswer } from './parsing';
-import { executeTool } from './tools';
+import { optimizeImage } from './images';
 import { OLLAMA_MODEL, OLLAMA_VISION_MODEL } from './models';
+import { parseAction, parseAnswer } from './parsing';
+import { REACT_SYSTEM_PROMPT } from './prompt';
+import { executeTool } from './tools';
 
 export async function chat(
-  request: ChatRequest & { model?: string; maxIterations?: number },
+  request: ChatRequest & { model?: string; maxIterations?: number }
 ): Promise<ChatResponse> {
   const messages: Array<{ role: string; content: string | string[]; images?: string[] }> = [];
   const toolsUsed: string[] = [];
@@ -53,6 +53,15 @@ export async function chat(
       : REACT_SYSTEM_PROMPT;
 
     messages.push({ role: 'system', content: systemPrompt });
+
+    // Add conversation history if available
+    if (request.history && request.history.length > 0) {
+      console.log(`📜 Adding ${request.history.length} previous messages to ReAct context`);
+      for (const msg of request.history) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+    }
+
     messages.push({ role: 'user', content: request.message });
 
     console.log(`🤖 ReAct mode: Starting agentic loop (max ${maxIterations} iterations)`);
@@ -85,8 +94,7 @@ export async function chat(
         const observation = await executeTool(action.tool, action.params);
         messages.push({
           role: 'user',
-          content:
-            `<observation>${observation}</observation>\n\nBased on this information, continue reasoning or provide your final answer in <answer> tags.`,
+          content: `<observation>${observation}</observation>\n\nBased on this information, continue reasoning or provide your final answer in <answer> tags.`,
         });
 
         continue;
@@ -153,7 +161,7 @@ export async function chat(
   } catch (error) {
     console.error('Ollama API call error:', error);
     throw new Error(
-      `Failed to communicate with local AI service: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      `Failed to communicate with local AI service: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
 import {
   Box,
   Button,
+  Group,
   Modal,
   NumberInput,
   Paper,
@@ -13,8 +13,8 @@ import {
   Text,
   Textarea,
   TextInput,
-  Group,
 } from '@mantine/core';
+import { useEffect, useState } from 'react';
 import type { Agent, ModelsResponse } from '../types';
 
 interface AgentEditorModalProps {
@@ -159,23 +159,25 @@ export default function AgentEditorModal({
           {service && (
             <ScrollArea.Autosize mah={150}>
               <Stack gap="xs">
-                {(service === 'ollama' ? availableModels.ollama : availableModels.ghmodels).map((m) => (
-                  <Paper
-                    key={m.id}
-                    p="xs"
-                    withBorder
-                    style={{
-                      cursor: 'pointer',
-                      borderColor: model === m.id ? '#7c3aed' : undefined,
-                      backgroundColor: model === m.id ? 'rgba(124, 58, 237, 0.1)' : undefined,
-                    }}
-                    onClick={() => setModel(m.id)}
-                  >
-                    <Text size="sm" fw={500}>
-                      {m.name}
-                    </Text>
-                  </Paper>
-                ))}
+                {(service === 'ollama' ? availableModels.ollama : availableModels.ghmodels).map(
+                  (m) => (
+                    <Paper
+                      key={m.id}
+                      p="xs"
+                      withBorder
+                      style={{
+                        cursor: 'pointer',
+                        borderColor: model === m.id ? '#7c3aed' : undefined,
+                        backgroundColor: model === m.id ? 'rgba(124, 58, 237, 0.1)' : undefined,
+                      }}
+                      onClick={() => setModel(m.id)}
+                    >
+                      <Text size="sm" fw={500}>
+                        {m.name}
+                      </Text>
+                    </Paper>
+                  )
+                )}
               </Stack>
             </ScrollArea.Autosize>
           )}

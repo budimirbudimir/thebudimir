@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -15,9 +14,9 @@ import {
   Text,
   Title,
 } from '@mantine/core';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Agent, Conversation, Team, TeamExecuteResult } from '../types';
-import type { ModelsResponse } from '../types';
+import type { Agent, Conversation, ModelsResponse, Team, TeamExecuteResult } from '../types';
 import AgentEditorModal from './AgentEditorModal';
 import TeamEditorModal from './TeamEditorModal';
 
@@ -27,7 +26,7 @@ interface ListViewProps {
   isLoadingConversations: boolean;
   onOpenConversation: (conversation: Conversation) => void;
   onDeleteConversation: (id: string, e: React.MouseEvent) => Promise<void>;
-  onStartNewConversation: (agent?: Agent) => void;
+  onStartNewConversation: (agent?: Agent, isPrivate?: boolean) => void;
   // Agents
   agents: Agent[];
   isLoadingAgents: boolean;
@@ -113,23 +112,38 @@ export default function ListView({
 
         {listTab === 'conversations' ? (
           <>
-            <Button
-              onClick={() => onStartNewConversation()}
-              size="lg"
-              mb="md"
-              style={{
-                background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
-                border: 'none',
-              }}
-            >
-              + Start New Conversation
-            </Button>
+            <Group mb="md">
+              <Button
+                onClick={() => onStartNewConversation()}
+                size="lg"
+                style={{
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+                  border: 'none',
+                  flex: 1,
+                }}
+              >
+                + Start Conversation
+              </Button>
+              <Button
+                onClick={() => onStartNewConversation(undefined, true)}
+                size="lg"
+                style={{
+                  background: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
+                  border: 'none',
+                  flex: 1,
+                }}
+              >
+                🔒 Start Private Conversation
+              </Button>
+            </Group>
 
             <ScrollArea style={{ flex: 1 }}>
               {isLoadingConversations ? (
                 <Box ta="center" py="xl">
                   <Loader color="violet" />
-                  <Text c="dimmed" mt="sm">Loading conversations...</Text>
+                  <Text c="dimmed" mt="sm">
+                    Loading conversations...
+                  </Text>
                 </Box>
               ) : conversations.length === 0 ? (
                 <Box ta="center" py="xl">
@@ -150,6 +164,11 @@ export default function ListView({
                       style={{
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
+                        ...(conversation.isPrivate && {
+                          borderColor: '#ca8a04',
+                          borderLeft: '3px solid #ca8a04',
+                          background: 'rgba(202, 138, 4, 0.05)',
+                        }),
                       }}
                       onClick={() => onOpenConversation(conversation)}
                     >
@@ -163,6 +182,11 @@ export default function ListView({
                               {new Date(conversation.updatedAt).toLocaleDateString()}{' '}
                               {new Date(conversation.updatedAt).toLocaleTimeString()}
                             </Text>
+                            {conversation.isPrivate && (
+                              <Badge size="xs" color="yellow" variant="light">
+                                🔒 Private
+                              </Badge>
+                            )}
                             {conversation.agentId && (
                               <Badge size="xs" color="violet" variant="light">
                                 {agents.find((a) => a.id === conversation.agentId)?.name || 'Agent'}
@@ -202,7 +226,9 @@ export default function ListView({
               {isLoadingAgents ? (
                 <Box ta="center" py="xl">
                   <Loader color="violet" />
-                  <Text c="dimmed" mt="sm">Loading agents...</Text>
+                  <Text c="dimmed" mt="sm">
+                    Loading agents...
+                  </Text>
                 </Box>
               ) : agents.length === 0 ? (
                 <Box ta="center" py="xl">
@@ -216,12 +242,7 @@ export default function ListView({
               ) : (
                 <Stack gap="sm">
                   {agents.map((agent) => (
-                    <Paper
-                      key={agent.id}
-                      p="md"
-                      withBorder
-                      style={{ transition: 'all 0.2s ease' }}
-                    >
+                    <Paper key={agent.id} p="md" withBorder style={{ transition: 'all 0.2s ease' }}>
                       <Group justify="space-between" wrap="nowrap">
                         <Box style={{ flex: 1 }}>
                           <Text fw={600} lineClamp={1}>
@@ -303,7 +324,9 @@ export default function ListView({
               {isLoadingTeams ? (
                 <Box ta="center" py="xl">
                   <Loader color="violet" />
-                  <Text c="dimmed" mt="sm">Loading teams...</Text>
+                  <Text c="dimmed" mt="sm">
+                    Loading teams...
+                  </Text>
                 </Box>
               ) : teams.length === 0 ? (
                 <Box ta="center" py="xl">
@@ -317,12 +340,7 @@ export default function ListView({
               ) : (
                 <Stack gap="sm">
                   {teams.map((team) => (
-                    <Paper
-                      key={team.id}
-                      p="md"
-                      withBorder
-                      style={{ transition: 'all 0.2s ease' }}
-                    >
+                    <Paper key={team.id} p="md" withBorder style={{ transition: 'all 0.2s ease' }}>
                       <Group justify="space-between" wrap="nowrap">
                         <Box style={{ flex: 1 }}>
                           <Text fw={600} lineClamp={1}>
@@ -395,7 +413,9 @@ export default function ListView({
               {isExecutingTeam ? (
                 <Box ta="center" py="xl">
                   <Loader color="violet" />
-                  <Text c="dimmed" mt="sm">Team is working on the task...</Text>
+                  <Text c="dimmed" mt="sm">
+                    Team is working on the task...
+                  </Text>
                 </Box>
               ) : (
                 teamExecuteResult && (

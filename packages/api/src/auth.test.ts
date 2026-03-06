@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, mock } from 'bun:test';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
 // Mock @clerk/backend before importing auth module
 const mockClerkVerifyToken = mock(() => Promise.resolve({ sub: 'user_test123' }));
@@ -17,7 +17,7 @@ describe('Auth Module', () => {
     test('returns true when CLERK_SECRET_KEY is set', () => {
       // Auth module reads env var at load time, so we test current state
       const result = isAuthEnabled();
-      
+
       if (process.env.CLERK_SECRET_KEY) {
         expect(result).toBe(true);
       } else {
@@ -46,9 +46,9 @@ describe('Auth Module', () => {
       }
 
       mockClerkVerifyToken.mockResolvedValueOnce({ sub: 'user_456' });
-      
+
       const result = await verifyToken('Bearer test_token_123');
-      
+
       expect(result).toEqual({ userId: 'user_456' });
       expect(mockClerkVerifyToken).toHaveBeenCalledWith('test_token_123', {
         secretKey: process.env.CLERK_SECRET_KEY,
@@ -62,9 +62,9 @@ describe('Auth Module', () => {
       }
 
       mockClerkVerifyToken.mockResolvedValueOnce({ sub: 'user_789' });
-      
+
       const result = await verifyToken('test_token_456');
-      
+
       expect(result).toEqual({ userId: 'user_789' });
       expect(mockClerkVerifyToken).toHaveBeenCalledWith('test_token_456', {
         secretKey: process.env.CLERK_SECRET_KEY,
@@ -78,9 +78,9 @@ describe('Auth Module', () => {
       }
 
       mockClerkVerifyToken.mockRejectedValueOnce(new Error('Invalid token'));
-      
+
       const result = await verifyToken('invalid_token');
-      
+
       expect(result).toBeNull();
     });
 
@@ -89,9 +89,9 @@ describe('Auth Module', () => {
         console.log('⏭️  Skipping test - CLERK_SECRET_KEY is configured');
         return;
       }
-      
+
       const result = await verifyToken('Bearer test_token');
-      
+
       expect(result).toBeNull();
       expect(mockClerkVerifyToken).not.toHaveBeenCalled();
     });

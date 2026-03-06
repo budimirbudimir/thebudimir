@@ -1,11 +1,11 @@
-import * as mistral from '../services/mistral';
 import * as Sentry from '@sentry/bun';
+import * as mistral from '../services/mistral';
 
 export async function handleStatusRoutes(
   req: Request,
   url: URL,
   corsHeaders: Record<string, string>,
-  VERSION: string,
+  VERSION: string
 ): Promise<Response | null> {
   // Health check endpoint
   if (url.pathname === '/v1/status') {
@@ -16,7 +16,7 @@ export async function handleStatusRoutes(
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
       },
-      { headers: corsHeaders },
+      { headers: corsHeaders }
     );
   }
 
@@ -30,7 +30,7 @@ export async function handleStatusRoutes(
           error: 'GH_MODELS_TOKEN not configured',
           timestamp: new Date().toISOString(),
         },
-        { status: 503, headers: corsHeaders },
+        { status: 503, headers: corsHeaders }
       );
     }
     return Response.json(
@@ -38,7 +38,7 @@ export async function handleStatusRoutes(
         status: 'online',
         timestamp: new Date().toISOString(),
       },
-      { headers: corsHeaders },
+      { headers: corsHeaders }
     );
   }
 
@@ -64,7 +64,7 @@ export async function handleStatusRoutes(
           models: modelCount,
           timestamp: new Date().toISOString(),
         },
-        { headers: corsHeaders },
+        { headers: corsHeaders }
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -75,7 +75,7 @@ export async function handleStatusRoutes(
           error: errorMessage,
           timestamp: new Date().toISOString(),
         },
-        { status: 503, headers: corsHeaders },
+        { status: 503, headers: corsHeaders }
       );
     }
   }

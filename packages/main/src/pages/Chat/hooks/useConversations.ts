@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { ChatApi } from './useChatApi';
 import type { Agent, Conversation, ConversationMessage, Message } from '../types';
+import type { ChatApi } from './useChatApi';
 
 export interface ConversationsState {
   conversations: Conversation[];
@@ -17,7 +17,7 @@ export interface ConversationsState {
       setCurrentAgent: React.Dispatch<React.SetStateAction<Agent | null>>;
       setSelectedModel: React.Dispatch<React.SetStateAction<string>>;
       setSelectedService: React.Dispatch<React.SetStateAction<'ollama' | 'ghmodels'>>;
-    },
+    }
   ) => Promise<void>;
   deleteConversation: (id: string, e: React.MouseEvent) => Promise<void>;
   createConversation: (params: {
@@ -25,6 +25,7 @@ export interface ConversationsState {
     model: string;
     service: string;
     agentId?: string;
+    isPrivate?: boolean;
   }) => Promise<string | null>;
 }
 
@@ -41,7 +42,7 @@ export function useConversations(api: ChatApi): ConversationsState {
       setCurrentAgent: React.Dispatch<React.SetStateAction<Agent | null>>;
       setSelectedModel: React.Dispatch<React.SetStateAction<string>>;
       setSelectedService: React.Dispatch<React.SetStateAction<'ollama' | 'ghmodels'>>;
-    },
+    }
   ) => {
     setCurrentConversationId(conversation.id);
     callbacks.setIsLoadingMessages(true);
@@ -54,9 +55,7 @@ export function useConversations(api: ChatApi): ConversationsState {
     }
 
     try {
-      const response = await api.authFetch(
-        `${api.endpoints.conversations}/${conversation.id}`,
-      );
+      const response = await api.authFetch(`${api.endpoints.conversations}/${conversation.id}`);
       if (response.ok) {
         const data = (await response.json()) as {
           conversation: Conversation;
@@ -68,7 +67,7 @@ export function useConversations(api: ChatApi): ConversationsState {
             role: m.role,
             content: m.content,
             timestamp: m.createdAt,
-          })),
+          }))
         );
         callbacks.setCurrentAgent(data.agent);
       }
@@ -82,10 +81,9 @@ export function useConversations(api: ChatApi): ConversationsState {
   const deleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const response = await api.authFetch(
-        `${api.endpoints.conversations}/${id}`,
-        { method: 'DELETE' },
-      );
+      const response = await api.authFetch(`${api.endpoints.conversations}/${id}`, {
+        method: 'DELETE',
+      });
       if (response.ok) {
         setConversations((prev) => prev.filter((c) => c.id !== id));
       }
@@ -99,6 +97,7 @@ export function useConversations(api: ChatApi): ConversationsState {
     model: string;
     service: string;
     agentId?: string;
+    isPrivate?: boolean;
   }): Promise<string | null> => {
     try {
       const response = await api.authFetch(api.endpoints.conversations, {

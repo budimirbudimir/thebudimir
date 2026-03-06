@@ -43,7 +43,7 @@ const server = Bun.serve({
 
     // CORS preflight
     if (req.method === 'OPTIONS') {
-      const allowOrigin = !origin ? '*' : (ALLOWED_ORIGINS.includes(origin) ? origin : '');
+      const allowOrigin = !origin ? '*' : ALLOWED_ORIGINS.includes(origin) ? origin : '';
       return new Response(null, {
         status: 204,
         headers: {
@@ -59,10 +59,10 @@ const server = Bun.serve({
     if (isAuthEnabled()) {
       const authHeader = req.headers.get('Authorization');
       const authResult = await verifyToken(authHeader);
-      
+
       if (!authResult) {
         console.warn('⚠️  Unauthorized request blocked');
-        const allowOrigin = !origin ? '*' : (ALLOWED_ORIGINS.includes(origin) ? origin : '');
+        const allowOrigin = !origin ? '*' : ALLOWED_ORIGINS.includes(origin) ? origin : '';
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
           headers: {
@@ -89,7 +89,7 @@ const server = Bun.serve({
 
       // Clone response and add CORS headers
       const headers = new Headers(response.headers);
-      const allowOrigin = !origin ? '*' : (ALLOWED_ORIGINS.includes(origin) ? origin : '');
+      const allowOrigin = !origin ? '*' : ALLOWED_ORIGINS.includes(origin) ? origin : '';
       if (allowOrigin) {
         headers.set('Access-Control-Allow-Origin', allowOrigin);
         headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -103,7 +103,7 @@ const server = Bun.serve({
       });
     } catch (error) {
       console.error('❌ Proxy error:', error);
-      const allowOrigin = !origin ? '*' : (ALLOWED_ORIGINS.includes(origin) ? origin : '');
+      const allowOrigin = !origin ? '*' : ALLOWED_ORIGINS.includes(origin) ? origin : '';
       return new Response(
         JSON.stringify({
           error: 'Failed to connect to Ollama',

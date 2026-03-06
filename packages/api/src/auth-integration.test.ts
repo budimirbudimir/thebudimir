@@ -31,7 +31,7 @@ describe('API Authentication Integration', () => {
       });
 
       expect(response.status).toBe(401);
-      const data = await response.json() as ErrorResponse;
+      const data = (await response.json()) as ErrorResponse;
       expect(data.error).toBe('Unauthorized');
     } catch (_error) {
       console.log('⏭️  Skipping test - API server not running');
@@ -49,7 +49,7 @@ describe('API Authentication Integration', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer invalid_token_123',
+          Authorization: 'Bearer invalid_token_123',
         },
         body: JSON.stringify({
           message: 'Hello',
@@ -58,7 +58,7 @@ describe('API Authentication Integration', () => {
       });
 
       expect(response.status).toBe(401);
-      const data = await response.json() as ErrorResponse;
+      const data = (await response.json()) as ErrorResponse;
       expect(data.error).toBe('Unauthorized');
     } catch (_error) {
       console.log('⏭️  Skipping test - API server not running');
@@ -111,7 +111,7 @@ describe('API Authentication Integration', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json() as HealthResponse;
+      const data = (await response.json()) as HealthResponse;
       expect(data.status).toBe('ok');
     } catch (_error) {
       console.log('⏭️  Skipping test - API server not running');

@@ -1,18 +1,16 @@
+import { Alert, Badge, Button, Container, Group, Paper, Title } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Alert, Button, Container, Group, Paper, Title } from '@mantine/core';
-
+import ChatInputBar from './components/ChatInputBar';
+import ChatMessageList from './components/ChatMessageList';
+import ListView from './components/ListView';
+import ModelSelectorModal from './components/ModelSelectorModal';
+import { useAgents } from './hooks/useAgents';
+import { useChat } from './hooks/useChat';
 import { useChatApi } from './hooks/useChatApi';
 import { useConversations } from './hooks/useConversations';
-import { useAgents } from './hooks/useAgents';
-import { useTeams } from './hooks/useTeams';
 import { useModels } from './hooks/useModels';
-import { useChat } from './hooks/useChat';
-
-import ListView from './components/ListView';
-import ChatMessageList from './components/ChatMessageList';
-import ChatInputBar from './components/ChatInputBar';
-import ModelSelectorModal from './components/ModelSelectorModal';
+import { useTeams } from './hooks/useTeams';
 
 import type { Agent, Conversation } from './types';
 
@@ -65,16 +63,18 @@ export default function Chat() {
     fetchData();
   }, []);
 
-  const startNewConversation = (agent?: Agent) => {
+  const startNewConversation = (agent?: Agent, isPrivate = false) => {
     conversationsHook.setCurrentConversationId(null);
     agentsHook.setCurrentAgent(agent || null);
     chat.setMessages([]);
+    chat.setIsPrivate(isPrivate);
     if (agent?.model) models.setSelectedModel(agent.model);
     if (agent?.service) models.setSelectedService(agent.service as 'ollama' | 'ghmodels');
     setActiveView('chat');
   };
 
   const handleOpenConversation = async (conversation: Conversation) => {
+    chat.setIsPrivate(conversation.isPrivate ?? false);
     setActiveView('chat');
     await conversationsHook.openConversation(conversation, {
       setMessages: chat.setMessages,
@@ -136,6 +136,11 @@ export default function Chat() {
             ← Back to Conversations
           </Button>
           <Title order={1}>AI Chat</Title>
+          {chat.isPrivate && (
+            <Badge color="yellow" variant="light" size="lg">
+              🔒 Private
+            </Badge>
+          )}
         </Group>
         <Button component={Link} to="/" variant="subtle">
           Home
@@ -146,7 +151,15 @@ export default function Chat() {
         shadow="sm"
         p="md"
         withBorder
-        style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}
+        style={{
+          height: 'calc(100vh - 200px)',
+          display: 'flex',
+          flexDirection: 'column',
+          ...(chat.isPrivate && {
+            borderColor: '#ca8a04',
+            borderLeft: '3px solid #ca8a04',
+          }),
+        }}
       >
         <ChatMessageList
           messages={chat.messages}

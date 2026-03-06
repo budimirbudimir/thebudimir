@@ -1,14 +1,14 @@
+import { isAuthEnabled, verifyToken } from '../auth';
 import * as mistral from '../services/mistral';
 import * as ollama from '../services/ollama';
-import { isAuthEnabled, verifyToken } from '../auth';
-import { agentsDb, type Agent } from '../storage/agents';
+import { type Agent, agentsDb } from '../storage/agents';
 import { conversationsDb } from '../storage/conversations';
 
 export async function handleChatRoute(
   req: Request,
   url: URL,
   corsHeaders: Record<string, string>,
-  aiService: { isConfigured(): boolean; chat: (...args: any[]) => Promise<any> },
+  aiService: { isConfigured(): boolean; chat: (...args: any[]) => Promise<any> }
 ): Promise<Response | null> {
   if (url.pathname !== '/v1/chat' || req.method !== 'POST') {
     return null;
@@ -16,13 +16,16 @@ export async function handleChatRoute(
 
   // Verify authentication - always required
   const authEnabled = isAuthEnabled();
-  
+
   if (!authEnabled) {
     // Authentication is required but not configured - this should not happen in production
     console.error('CRITICAL: CLERK_SECRET_KEY is not configured. Authentication is required.');
     return Response.json(
-      { error: 'Server configuration error: Authentication is not configured. Please contact the administrator.' },
-      { status: 503, headers: corsHeaders },
+      {
+        error:
+          'Server configuration error: Authentication is not configured. Please contact the administrator.',
+      },
+      { status: 503, headers: corsHeaders }
     );
   }
 
@@ -30,10 +33,7 @@ export async function handleChatRoute(
   const authResult = await verifyToken(authHeader);
 
   if (!authResult) {
-    return Response.json(
-      { error: 'Unauthorized' },
-      { status: 401, headers: corsHeaders },
-    );
+    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
   }
 
   const authenticatedUserId = authResult.userId;
@@ -42,7 +42,7 @@ export async function handleChatRoute(
   if (!aiService.isConfigured()) {
     return Response.json(
       { error: 'AI service not configured' },
-      { status: 503, headers: corsHeaders },
+      { status: 503, headers: corsHeaders }
     );
   }
 
@@ -75,7 +75,10 @@ export async function handleChatRoute(
     // Fetch conversation history if conversationId is provided
     let conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
     if (conversationId && authenticatedUserId) {
-      const historyMessages = await conversationsDb.getMessagesForUser(conversationId, authenticatedUserId);
+      const historyMessages = await conversationsDb.getMessagesForUser(
+        conversationId,
+        authenticatedUserId
+      );
       if (historyMessages) {
         conversationHistory = historyMessages.map((m) => ({
           role: m.role,
@@ -85,10 +88,7 @@ export async function handleChatRoute(
     }
 
     if (!message || typeof message !== 'string') {
-      return Response.json(
-        { error: 'Message is required' },
-        { status: 400, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Message is required' }, { status: 400, headers: corsHeaders });
     }
 
     // Check if conversation has an agent and load agent config
@@ -96,7 +96,7 @@ export async function handleChatRoute(
     if (conversationId && authenticatedUserId) {
       const conversation = await conversationsDb.getByIdForUser(
         conversationId,
-        authenticatedUserId,
+        authenticatedUserId
       );
       if (conversation?.agentId) {
         agent = await agentsDb.getById(conversation.agentId);
@@ -104,14 +104,15 @@ export async function handleChatRoute(
     }
 
     // Use agent config as defaults, with request params taking precedence
-    const effectiveSystemPrompt = systemPrompt || agent?.systemPrompt || 'You are a helpful assistant.';
+    const effectiveSystemPrompt =
+      systemPrompt || agent?.systemPrompt || 'You are a helpful assistant.';
     const effectiveTemperature = temperature ?? agent?.temperature;
     const effectiveMaxTokens = maxTokens ?? agent?.maxTokens;
     const effectiveMaxIterations = agent?.maxIterations ?? 5;
     const effectiveModel = model || agent?.model;
     const effectiveService = service || (agent?.service as 'ollama' | 'ghmodels' | undefined);
     const effectiveUseTools =
-      useWebSearch ?? useTools ?? (agent?.tools?.includes('web_search') ?? false);
+      useWebSearch ?? useTools ?? agent?.tools?.includes('web_search') ?? false;
 
     // Select service based on request, agent config, or default
     const selectedService =
@@ -125,7 +126,7 @@ export async function handleChatRoute(
     if (!selectedService.isConfigured()) {
       return Response.json(
         { error: 'Selected AI service is not configured' },
-        { status: 503, headers: corsHeaders },
+        { status: 503, headers: corsHeaders }
       );
     }
 
@@ -162,7 +163,7 @@ export async function handleChatRoute(
           content: message,
           createdAt: timestamp,
         },
-        authenticatedUserId,
+        authenticatedUserId
       );
 
       if (userMsgSaved) {
@@ -175,7 +176,7 @@ export async function handleChatRoute(
             content: response.response,
             createdAt: new Date().toISOString(),
           },
-          authenticatedUserId,
+          authenticatedUserId
         );
         // Update conversation model/service if changed
         if (model || service) {
@@ -189,7 +190,9 @@ export async function handleChatRoute(
         console.warn('⚠️ Failed to save user message - conversation ownership verification failed');
       }
     } else if (conversationId && !imageData && !authenticatedUserId) {
-      console.warn('⚠️ Messages NOT persisted: authenticatedUserId is null (auth is disabled or token missing)');
+      console.warn(
+        '⚠️ Messages NOT persisted: authenticatedUserId is null (auth is disabled or token missing)'
+      );
     }
 
     return Response.json(response, { headers: corsHeaders });
@@ -209,7 +212,7 @@ export async function handleChatRoute(
         error: userMessage,
         response: userMessage,
       },
-      { status: 500, headers: corsHeaders },
+      { status: 500, headers: corsHeaders }
     );
   }
 }

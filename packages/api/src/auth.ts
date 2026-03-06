@@ -6,7 +6,9 @@ if (!CLERK_SECRET_KEY) {
   console.warn('Warning: CLERK_SECRET_KEY not configured. Authentication will be disabled.');
 }
 
-export async function verifyToken(token: string | null): Promise<{ userId: string; error?: string } | null> {
+export async function verifyToken(
+  token: string | null
+): Promise<{ userId: string; error?: string } | null> {
   if (!CLERK_SECRET_KEY) {
     console.warn('Clerk not configured, skipping auth check');
     return null; // Allow requests when Clerk is not configured
@@ -19,11 +21,11 @@ export async function verifyToken(token: string | null): Promise<{ userId: strin
   try {
     // Remove 'Bearer ' prefix if present
     const cleanToken = token.replace(/^Bearer\s+/i, '');
-    
+
     const payload = await clerkVerifyToken(cleanToken, {
       secretKey: CLERK_SECRET_KEY,
     });
-    
+
     return { userId: payload.sub };
   } catch (error) {
     console.error('Token verification failed:', error);

@@ -81,7 +81,11 @@ export default function ModelSelectorModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title={<Text fw={700} size="lg">Select AI Model</Text>}
+      title={
+        <Text fw={700} size="lg">
+          Select AI Model
+        </Text>
+      }
       size="lg"
     >
       <Stack gap="md">

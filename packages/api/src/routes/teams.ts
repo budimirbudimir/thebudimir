@@ -1,25 +1,22 @@
 import * as Sentry from '@sentry/bun';
+import { verifyToken } from '../auth';
 import * as mistral from '../services/mistral';
 import * as ollama from '../services/ollama';
-import { verifyToken } from '../auth';
-import { teamsDb, type Team } from '../storage/teams';
-import { agentsDb, type Agent } from '../storage/agents';
+import { type Agent, agentsDb } from '../storage/agents';
+import { type Team, teamsDb } from '../storage/teams';
 
 export async function handleTeamRoutes(
   req: Request,
   url: URL,
   corsHeaders: Record<string, string>,
-  aiService: { isConfigured(): boolean; chat: (...args: any[]) => Promise<any> },
+  aiService: { isConfigured(): boolean; chat: (...args: any[]) => Promise<any> }
 ): Promise<Response | null> {
   // GET /v1/teams - List all teams for authenticated user
   if (url.pathname === '/v1/teams' && req.method === 'GET') {
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -32,7 +29,7 @@ export async function handleTeamRoutes(
       });
       return Response.json(
         { error: 'Failed to fetch teams' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }
@@ -42,10 +39,7 @@ export async function handleTeamRoutes(
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -60,19 +54,16 @@ export async function handleTeamRoutes(
       if (!body.name || !body.coordinatorAgentId) {
         return Response.json(
           { error: 'Name and coordinator agent are required' },
-          { status: 400, headers: corsHeaders },
+          { status: 400, headers: corsHeaders }
         );
       }
 
       // Verify coordinator agent belongs to user
-      const coordinator = await agentsDb.getByIdForUser(
-        body.coordinatorAgentId,
-        authResult.userId,
-      );
+      const coordinator = await agentsDb.getByIdForUser(body.coordinatorAgentId, authResult.userId);
       if (!coordinator) {
         return Response.json(
           { error: 'Coordinator agent not found' },
-          { status: 404, headers: corsHeaders },
+          { status: 404, headers: corsHeaders }
         );
       }
 
@@ -83,7 +74,7 @@ export async function handleTeamRoutes(
           if (!member) {
             return Response.json(
               { error: `Member agent ${memberId} not found` },
-              { status: 404, headers: corsHeaders },
+              { status: 404, headers: corsHeaders }
             );
           }
         }
@@ -111,7 +102,7 @@ export async function handleTeamRoutes(
       });
       return Response.json(
         { error: 'Failed to create team' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }
@@ -121,10 +112,7 @@ export async function handleTeamRoutes(
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -132,25 +120,19 @@ export async function handleTeamRoutes(
       if (!teamId) {
         return Response.json(
           { error: 'Team ID is required' },
-          { status: 400, headers: corsHeaders },
+          { status: 400, headers: corsHeaders }
         );
       }
 
       const team = await teamsDb.getByIdForUser(teamId, authResult.userId);
       if (!team) {
-        return Response.json(
-          { error: 'Team not found' },
-          { status: 404, headers: corsHeaders },
-        );
+        return Response.json({ error: 'Team not found' }, { status: 404, headers: corsHeaders });
       }
 
       // Load coordinator and member agents
-      const coordinator = await agentsDb.getByIdForUser(
-        team.coordinatorAgentId,
-        authResult.userId,
-      );
+      const coordinator = await agentsDb.getByIdForUser(team.coordinatorAgentId, authResult.userId);
       const members = await Promise.all(
-        team.memberAgentIds.map((id) => agentsDb.getByIdForUser(id, authResult.userId)),
+        team.memberAgentIds.map((id) => agentsDb.getByIdForUser(id, authResult.userId))
       );
 
       return Response.json(
@@ -159,7 +141,7 @@ export async function handleTeamRoutes(
           coordinator,
           members: members.filter(Boolean),
         },
-        { headers: corsHeaders },
+        { headers: corsHeaders }
       );
     } catch (error) {
       console.error('Team fetch error:', error);
@@ -168,7 +150,7 @@ export async function handleTeamRoutes(
       });
       return Response.json(
         { error: 'Failed to fetch team' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }
@@ -178,10 +160,7 @@ export async function handleTeamRoutes(
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -189,7 +168,7 @@ export async function handleTeamRoutes(
       if (!teamId) {
         return Response.json(
           { error: 'Team ID is required' },
-          { status: 400, headers: corsHeaders },
+          { status: 400, headers: corsHeaders }
         );
       }
 
@@ -199,10 +178,7 @@ export async function handleTeamRoutes(
 
       const updated = await teamsDb.updateForUser(teamId, authResult.userId, body);
       if (!updated) {
-        return Response.json(
-          { error: 'Team not found' },
-          { status: 404, headers: corsHeaders },
-        );
+        return Response.json({ error: 'Team not found' }, { status: 404, headers: corsHeaders });
       }
 
       const team = await teamsDb.getByIdForUser(teamId, authResult.userId);
@@ -214,7 +190,7 @@ export async function handleTeamRoutes(
       });
       return Response.json(
         { error: 'Failed to update team' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }
@@ -224,10 +200,7 @@ export async function handleTeamRoutes(
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -235,16 +208,13 @@ export async function handleTeamRoutes(
       if (!teamId) {
         return Response.json(
           { error: 'Team ID is required' },
-          { status: 400, headers: corsHeaders },
+          { status: 400, headers: corsHeaders }
         );
       }
 
       const deleted = await teamsDb.deleteForUser(teamId, authResult.userId);
       if (!deleted) {
-        return Response.json(
-          { error: 'Team not found' },
-          { status: 404, headers: corsHeaders },
-        );
+        return Response.json({ error: 'Team not found' }, { status: 404, headers: corsHeaders });
       }
 
       return Response.json({ success: true, deletedId: teamId }, { headers: corsHeaders });
@@ -255,7 +225,7 @@ export async function handleTeamRoutes(
       });
       return Response.json(
         { error: 'Failed to delete team' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }
@@ -265,10 +235,7 @@ export async function handleTeamRoutes(
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -276,42 +243,33 @@ export async function handleTeamRoutes(
       if (!teamId) {
         return Response.json(
           { error: 'Team ID is required' },
-          { status: 400, headers: corsHeaders },
+          { status: 400, headers: corsHeaders }
         );
       }
 
       const body = (await req.json()) as { task?: string };
       if (!body.task) {
-        return Response.json(
-          { error: 'Task is required' },
-          { status: 400, headers: corsHeaders },
-        );
+        return Response.json({ error: 'Task is required' }, { status: 400, headers: corsHeaders });
       }
 
       // Load team
       const team = await teamsDb.getByIdForUser(teamId, authResult.userId);
       if (!team) {
-        return Response.json(
-          { error: 'Team not found' },
-          { status: 404, headers: corsHeaders },
-        );
+        return Response.json({ error: 'Team not found' }, { status: 404, headers: corsHeaders });
       }
 
       // Load coordinator and members
-      const coordinator = await agentsDb.getByIdForUser(
-        team.coordinatorAgentId,
-        authResult.userId,
-      );
+      const coordinator = await agentsDb.getByIdForUser(team.coordinatorAgentId, authResult.userId);
       if (!coordinator) {
         return Response.json(
           { error: 'Coordinator agent not found' },
-          { status: 404, headers: corsHeaders },
+          { status: 404, headers: corsHeaders }
         );
       }
 
       const members = (
         await Promise.all(
-          team.memberAgentIds.map((id) => agentsDb.getByIdForUser(id, authResult.userId)),
+          team.memberAgentIds.map((id) => agentsDb.getByIdForUser(id, authResult.userId))
         )
       ).filter((m): m is Agent => m !== null);
 
@@ -345,7 +303,7 @@ export async function handleTeamRoutes(
       ];
 
       console.log(
-        `🤝 Team execute: ${team.name} (coordinator: ${coordinator.name}, ${members.length} members)`,
+        `🤝 Team execute: ${team.name} (coordinator: ${coordinator.name}, ${members.length} members)`
       );
       console.log(`   Task: ${body.task.substring(0, 100)}...`);
 
@@ -376,7 +334,7 @@ export async function handleTeamRoutes(
               steps,
               toolsUsed: [...toolsUsed, ...(response.toolsUsed || [])],
             },
-            { headers: corsHeaders },
+            { headers: corsHeaders }
           );
         }
 
@@ -386,7 +344,7 @@ export async function handleTeamRoutes(
           const member = members.find((m) => m.id === delegation.agentId);
           if (member) {
             console.log(
-              `   🔄 Delegating to ${member.name}: ${delegation.task.substring(0, 50)}...`,
+              `   🔄 Delegating to ${member.name}: ${delegation.task.substring(0, 50)}...`
             );
             toolsUsed.push(`delegate_to_agent(${member.name})`);
 
@@ -421,8 +379,7 @@ export async function handleTeamRoutes(
             messages.push({ role: 'assistant', content: responseText });
             messages.push({
               role: 'user',
-              content:
-                `<observation>Response from ${member.name}:\n${memberResponse.response}</observation>\n\nBased on this information, continue reasoning or provide your final answer in <answer> tags.`,
+              content: `<observation>Response from ${member.name}:\n${memberResponse.response}</observation>\n\nBased on this information, continue reasoning or provide your final answer in <answer> tags.`,
             });
             continue;
           } else {
@@ -430,8 +387,7 @@ export async function handleTeamRoutes(
             messages.push({ role: 'assistant', content: responseText });
             messages.push({
               role: 'user',
-              content:
-                `<observation>Error: Agent with ID "${delegation.agentId}" not found in team.</observation>\n\nPlease try a different agent or provide your final answer.`,
+              content: `<observation>Error: Agent with ID "${delegation.agentId}" not found in team.</observation>\n\nPlease try a different agent or provide your final answer.`,
             });
             continue;
           }
@@ -447,7 +403,7 @@ export async function handleTeamRoutes(
             steps,
             toolsUsed: [...toolsUsed, ...(response.toolsUsed || [])],
           },
-          { headers: corsHeaders },
+          { headers: corsHeaders }
         );
       }
 
@@ -462,7 +418,7 @@ export async function handleTeamRoutes(
           toolsUsed,
           error: 'max_iterations_reached',
         },
-        { headers: corsHeaders },
+        { headers: corsHeaders }
       );
     } catch (error) {
       console.error('Team execute error:', error);
@@ -471,7 +427,7 @@ export async function handleTeamRoutes(
       });
       return Response.json(
         { error: 'Failed to execute team task' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }

@@ -150,14 +150,15 @@ export default function ShoppingList() {
                 style={{ flex: 1 }}
                 disabled={isSubmitting}
               />
-              <Button 
-                type="submit" 
-                loading={isSubmitting} 
+              <Button
+                type="submit"
+                loading={isSubmitting}
                 disabled={!input.trim()}
                 style={{
-                  background: !input.trim() || isSubmitting
-                    ? '#4c1d95' 
-                    : 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+                  background:
+                    !input.trim() || isSubmitting
+                      ? '#4c1d95'
+                      : 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
                   border: 'none',
                 }}
               >
@@ -178,11 +179,7 @@ export default function ShoppingList() {
         ) : (
           <Stack gap="xs">
             {items.map((item) => (
-              <Paper 
-                key={item.id} 
-                p="md" 
-                withBorder
-              >
+              <Paper key={item.id} p="md" withBorder>
                 <Group justify="space-between" align="flex-start">
                   <Box style={{ flex: 1 }}>
                     <Text size="lg" fw={500}>

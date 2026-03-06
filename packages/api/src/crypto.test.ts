@@ -1,5 +1,5 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
-import { encrypt, decrypt, isEncryptionConfigured } from './crypto';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { decrypt, encrypt, isEncryptionConfigured } from './crypto';
 
 // A valid 64-character hex key (32 bytes)
 const TEST_HEX_KEY = 'a'.repeat(64);
@@ -75,10 +75,10 @@ describe('Crypto Module', () => {
       delete process.env.MESSAGE_ENCRYPTION_KEY;
 
       expect(() => encrypt('test')).toThrow(
-        'MESSAGE_ENCRYPTION_KEY environment variable is not set',
+        'MESSAGE_ENCRYPTION_KEY environment variable is not set'
       );
       expect(() => decrypt('aa'.repeat(32))).toThrow(
-        'MESSAGE_ENCRYPTION_KEY environment variable is not set',
+        'MESSAGE_ENCRYPTION_KEY environment variable is not set'
       );
     });
 

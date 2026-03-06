@@ -1,7 +1,7 @@
 import { Box, Group, Image, Paper, Text } from '@mantine/core';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import remarkGfm from 'remark-gfm';
 import 'highlight.js/styles/github-dark.css';
 import type { Message } from '../types';
 
@@ -77,10 +77,7 @@ export default function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
           />
         )}
         <Box style={markdownStyles}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-          >
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
             {message.content}
           </ReactMarkdown>
         </Box>

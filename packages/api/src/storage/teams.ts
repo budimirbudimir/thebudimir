@@ -72,7 +72,7 @@ export const teamsDb = {
   async updateForUser(
     id: string,
     userId: string,
-    updates: Partial<Omit<Team, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>,
+    updates: Partial<Omit<Team, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
   ): Promise<boolean> {
     const fields: string[] = ['updated_at = ?'];
     const args: (string | null)[] = [new Date().toISOString()];
