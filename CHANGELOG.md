@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/budimirbudimir/thebudimir/compare/v1.20.0...v1.21.0) (2026-03-06)
+
+
+### Features
+
+* big one ([#76](https://github.com/budimirbudimir/thebudimir/issues/76)) ([c6e38b3](https://github.com/budimirbudimir/thebudimir/commit/c6e38b357419600b526cfc3eabaff9596f9b4156))
+
 # [1.20.0](https://github.com/budimirbudimir/thebudimir/compare/v1.19.2...v1.20.0) (2026-02-19)
 
 
