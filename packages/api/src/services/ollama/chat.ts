@@ -119,6 +119,14 @@ export async function chat(
   }
 
   // === Simple Mode: No ReAct loop ===
+  // Add conversation history if available
+  if (request.history && request.history.length > 0) {
+    console.log(`📜 Adding ${request.history.length} previous messages to context`);
+    for (const msg of request.history) {
+      messages.push({ role: msg.role, content: msg.content });
+    }
+  }
+
   if (request.systemPrompt) {
     messages.push({ role: 'system', content: request.systemPrompt });
   }

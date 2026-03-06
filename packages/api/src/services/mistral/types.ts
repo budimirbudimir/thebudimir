@@ -12,6 +12,11 @@ export interface ChatMessage {
   toolCallId?: string;
 }
 
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface ChatRequest {
   message: string;
   imageData?: string; // base64 data URL
@@ -20,6 +25,7 @@ export interface ChatRequest {
   maxTokens?: number;
   maxIterations?: number; // Max ReAct loop iterations for agentic execution
   useTools?: boolean;
+  history?: ConversationMessage[]; // Previous messages for context
 }
 
 export interface ChatResponse {

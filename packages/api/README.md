@@ -20,6 +20,7 @@ Backend API server built with Bun.
 ### Chat
 - **URL**: `/v1/chat`
 - **Method**: POST
+- **Authentication**: Required (see Authentication section below)
 - **Request Body**:
 ```json
 {
@@ -28,7 +29,10 @@ Backend API server built with Bun.
   "systemPrompt": "You are a helpful assistant" (optional),
   "useWebSearch": false (optional),
   "temperature": 0.7 (optional),
-  "maxTokens": 2000 (optional)
+  "maxTokens": 2000 (optional),
+  "conversationId": "uuid" (optional),
+  "model": "model-id" (optional),
+  "service": "ollama" | "ghmodels" (optional)
 }
 ```
 - **Response**:
@@ -42,12 +46,30 @@ Backend API server built with Bun.
 
 **Features:**
 - **Text Chat**: Send messages and get AI responses
+- **Conversation Context**: When `conversationId` is provided, previous messages are automatically loaded and sent to the AI as context, enabling multi-turn conversations
 - **Vision Support**: Attach images as base64 data URLs (PNG, JPEG, WebP)
   - Automatic WebP to PNG conversion for model compatibility
   - Image size validation (max 10MB base64 / ~7.5MB actual)
   - Format detection and validation
 - **Web Search**: Enable real-time web search via Brave API or SearxNG
 - **Model Selection**: Automatically uses vision models (llava) for images
+
+## Authentication
+
+All chat endpoints require authentication using Clerk. The authentication is enforced in production.
+
+### Required Environment Variables
+- `CLERK_SECRET_KEY` - Clerk secret key for token verification (required in production)
+
+### Authorization Header
+Include the Clerk JWT token in the Authorization header:
+```
+Authorization: Bearer <clerk_jwt_token>
+```
+
+### Error Responses
+- `401 Unauthorized` - Missing or invalid token
+- `503 Service Unavailable` - Authentication not configured (should not happen in production)
 
 ## Development
 

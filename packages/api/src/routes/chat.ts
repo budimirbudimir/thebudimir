@@ -14,28 +14,30 @@ export async function handleChatRoute(
     return null;
   }
 
-  // Verify authentication if enabled
-  let authenticatedUserId: string | null = null;
+  // Verify authentication - always required
   const authEnabled = isAuthEnabled();
   
-  if (authEnabled) {
-    const authHeader = req.headers.get('Authorization');
-    const authResult = await verifyToken(authHeader);
-
-    if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
-    }
-    authenticatedUserId = authResult.userId;
-    console.log(`✅ Authenticated request from user: ${authResult.userId}`);
-  } else {
-    // When auth is disabled, use a default user ID for persistence
-    // This allows the app to work in development mode without Clerk authentication
-    authenticatedUserId = 'default-user';
-    console.log('🔓 Auth disabled - using default user ID for persistence');
+  if (!authEnabled) {
+    // Authentication is required but not configured - this should not happen in production
+    console.error('CRITICAL: CLERK_SECRET_KEY is not configured. Authentication is required.');
+    return Response.json(
+      { error: 'Server configuration error: Authentication is not configured. Please contact the administrator.' },
+      { status: 503, headers: corsHeaders },
+    );
   }
+
+  const authHeader = req.headers.get('Authorization');
+  const authResult = await verifyToken(authHeader);
+
+  if (!authResult) {
+    return Response.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: corsHeaders },
+    );
+  }
+
+  const authenticatedUserId = authResult.userId;
+  console.log(`✅ Authenticated request from user: ${authResult.userId}`);
 
   if (!aiService.isConfigured()) {
     return Response.json(
@@ -69,6 +71,18 @@ export async function handleChatRoute(
       service,
       conversationId,
     } = body;
+
+    // Fetch conversation history if conversationId is provided
+    let conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    if (conversationId && authenticatedUserId) {
+      const historyMessages = await conversationsDb.getMessagesForUser(conversationId, authenticatedUserId);
+      if (historyMessages) {
+        conversationHistory = historyMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+      }
+    }
 
     if (!message || typeof message !== 'string') {
       return Response.json(
@@ -124,6 +138,7 @@ export async function handleChatRoute(
       maxIterations: effectiveMaxIterations,
       useTools: effectiveUseTools,
       model: effectiveModel,
+      history: conversationHistory,
     });
 
     // Persist messages if conversationId is provided and user is authenticated (text only, no images)
