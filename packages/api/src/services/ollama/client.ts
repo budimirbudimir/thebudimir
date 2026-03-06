@@ -5,7 +5,7 @@ export async function ollamaChat(
   messages: Array<{ role: string; content: string | string[]; images?: string[] }>,
   modelToUse: string,
   temperature: number,
-  maxTokens: number,
+  maxTokens: number
 ): Promise<string> {
   const response = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',

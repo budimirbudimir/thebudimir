@@ -1,15 +1,8 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ESNext"
-    ],
-    "types": [
-      "vite/client",
-      "@types/bun"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "types": ["vite/client", "@types/bun"],
     "baseUrl": "src",
     "allowJs": false,
     "skipLibCheck": true,
@@ -25,11 +18,6 @@
     "jsx": "react-jsx",
     "noImplicitAny": false
   },
-  "include": [
-    "./src",
-    "./test-setup.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["./src", "./test-setup.ts"],
+  "exclude": ["node_modules"]
 }

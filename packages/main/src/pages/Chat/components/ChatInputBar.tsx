@@ -11,9 +11,9 @@ import {
   Select,
   TextInput,
 } from '@mantine/core';
-import type { Agent, Team } from '../types';
 import type { ChatState } from '../hooks/useChat';
 import type { ModelsState } from '../hooks/useModels';
+import type { Agent, Team } from '../types';
 
 interface ChatInputBarProps {
   chat: ChatState;

@@ -26,6 +26,7 @@ export interface Conversation {
   title: string;
   model?: string;
   service?: string;
+  isPrivate?: boolean;
   createdAt: string;
   updatedAt: string;
 }

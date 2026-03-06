@@ -1,21 +1,18 @@
 import * as Sentry from '@sentry/bun';
 import { verifyToken } from '../auth';
-import { agentsDb, type Agent } from '../storage/agents';
+import { type Agent, agentsDb } from '../storage/agents';
 
 export async function handleAgentRoutes(
   req: Request,
   url: URL,
-  corsHeaders: Record<string, string>,
+  corsHeaders: Record<string, string>
 ): Promise<Response | null> {
   // GET /v1/agents - List all agents for authenticated user
   if (url.pathname === '/v1/agents' && req.method === 'GET') {
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -28,7 +25,7 @@ export async function handleAgentRoutes(
       });
       return Response.json(
         { error: 'Failed to fetch agents' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }
@@ -38,10 +35,7 @@ export async function handleAgentRoutes(
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -60,7 +54,7 @@ export async function handleAgentRoutes(
       if (!body.name || !body.systemPrompt) {
         return Response.json(
           { error: 'Name and system prompt are required' },
-          { status: 400, headers: corsHeaders },
+          { status: 400, headers: corsHeaders }
         );
       }
 
@@ -90,7 +84,7 @@ export async function handleAgentRoutes(
       });
       return Response.json(
         { error: 'Failed to create agent' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }
@@ -100,10 +94,7 @@ export async function handleAgentRoutes(
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -111,16 +102,13 @@ export async function handleAgentRoutes(
       if (!agentId) {
         return Response.json(
           { error: 'Agent ID is required' },
-          { status: 400, headers: corsHeaders },
+          { status: 400, headers: corsHeaders }
         );
       }
 
       const agent = await agentsDb.getByIdForUser(agentId, authResult.userId);
       if (!agent) {
-        return Response.json(
-          { error: 'Agent not found' },
-          { status: 404, headers: corsHeaders },
-        );
+        return Response.json({ error: 'Agent not found' }, { status: 404, headers: corsHeaders });
       }
 
       return Response.json({ agent }, { headers: corsHeaders });
@@ -131,7 +119,7 @@ export async function handleAgentRoutes(
       });
       return Response.json(
         { error: 'Failed to fetch agent' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }
@@ -141,10 +129,7 @@ export async function handleAgentRoutes(
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -152,7 +137,7 @@ export async function handleAgentRoutes(
       if (!agentId) {
         return Response.json(
           { error: 'Agent ID is required' },
-          { status: 400, headers: corsHeaders },
+          { status: 400, headers: corsHeaders }
         );
       }
 
@@ -162,10 +147,7 @@ export async function handleAgentRoutes(
 
       const updated = await agentsDb.updateForUser(agentId, authResult.userId, body);
       if (!updated) {
-        return Response.json(
-          { error: 'Agent not found' },
-          { status: 404, headers: corsHeaders },
-        );
+        return Response.json({ error: 'Agent not found' }, { status: 404, headers: corsHeaders });
       }
 
       const agent = await agentsDb.getByIdForUser(agentId, authResult.userId);
@@ -177,7 +159,7 @@ export async function handleAgentRoutes(
       });
       return Response.json(
         { error: 'Failed to update agent' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }
@@ -187,10 +169,7 @@ export async function handleAgentRoutes(
     const authHeader = req.headers.get('Authorization');
     const authResult = await verifyToken(authHeader);
     if (!authResult) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders },
-      );
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     try {
@@ -198,16 +177,13 @@ export async function handleAgentRoutes(
       if (!agentId) {
         return Response.json(
           { error: 'Agent ID is required' },
-          { status: 400, headers: corsHeaders },
+          { status: 400, headers: corsHeaders }
         );
       }
 
       const deleted = await agentsDb.deleteForUser(agentId, authResult.userId);
       if (!deleted) {
-        return Response.json(
-          { error: 'Agent not found' },
-          { status: 404, headers: corsHeaders },
-        );
+        return Response.json({ error: 'Agent not found' }, { status: 404, headers: corsHeaders });
       }
 
       return Response.json({ success: true, deletedId: agentId }, { headers: corsHeaders });
@@ -218,7 +194,7 @@ export async function handleAgentRoutes(
       });
       return Response.json(
         { error: 'Failed to delete agent' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }

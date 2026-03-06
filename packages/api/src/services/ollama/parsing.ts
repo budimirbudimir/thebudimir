@@ -1,7 +1,7 @@
 // Parse delegate_to_agent action
 export function parseDelegation(text: string): { agentId: string; task: string } | null {
   const delegateMatch = text.match(
-    /<action\s+tool="delegate_to_agent"\s+agent="([^"]+)">(.*?)<\/action>/s,
+    /<action\s+tool="delegate_to_agent"\s+agent="([^"]+)">(.*?)<\/action>/s
   );
   if (delegateMatch) {
     return { agentId: delegateMatch[1], task: delegateMatch[2].trim() };

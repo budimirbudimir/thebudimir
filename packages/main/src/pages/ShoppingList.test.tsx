@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 
 // Mock fetch globally
-const mockFetch = mock(() => 
+const mockFetch = mock(() =>
   Promise.resolve({
     ok: true,
     json: () => Promise.resolve({ items: [] }),
@@ -72,7 +72,7 @@ describe('ShoppingList', () => {
 
     const response = await fetch('/api/shopping-list');
     const data = await response.json();
-    
+
     expect(data.items).toEqual([]);
     expect(Array.isArray(data.items)).toBe(true);
   });

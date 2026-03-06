@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import type { Message, TeamExecuteResult } from '../types';
+import type { AgentsState } from './useAgents';
 import type { ChatApi } from './useChatApi';
 import type { ConversationsState } from './useConversations';
-import type { AgentsState } from './useAgents';
-import type { TeamsState } from './useTeams';
 import type { ModelsState } from './useModels';
-import type { Message, TeamExecuteResult } from '../types';
+import type { TeamsState } from './useTeams';
 
 interface UseChatDeps {
   conversations: ConversationsState;
@@ -18,6 +18,7 @@ export interface ChatState {
   input: string;
   isLoading: boolean;
   isLoadingMessages: boolean;
+  isPrivate: boolean;
   error: string | null;
   useWebSearch: boolean;
   chatMode: 'single' | 'team';
@@ -28,6 +29,7 @@ export interface ChatState {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   setInput: React.Dispatch<React.SetStateAction<string>>;
   setIsLoadingMessages: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsPrivate: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setUseWebSearch: React.Dispatch<React.SetStateAction<boolean>>;
   setChatMode: React.Dispatch<React.SetStateAction<'single' | 'team'>>;
@@ -40,6 +42,7 @@ export interface ChatState {
 export function useChat(api: ChatApi, deps: UseChatDeps): ChatState {
   const { conversations, agents, teams, models } = deps;
 
+  const [isPrivate, setIsPrivate] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -75,7 +78,7 @@ export function useChat(api: ChatApi, deps: UseChatDeps): ChatState {
           (m) =>
             m.name.toLowerCase().includes('llava') ||
             m.name.toLowerCase().includes('glm') ||
-            m.name.toLowerCase().includes('vision'),
+            m.name.toLowerCase().includes('vision')
         );
 
         if (visionModel) {
@@ -86,12 +89,12 @@ export function useChat(api: ChatApi, deps: UseChatDeps): ChatState {
           models.setSelectedModel(models.availableModels.ollama[0].id);
           models.setSelectedService('ollama');
           setImageWarning(
-            'No vision-capable models detected. Consider using llava-phi3 or glm-4.6v-flash.',
+            'No vision-capable models detected. Consider using llava-phi3 or glm-4.6v-flash.'
           );
         }
       } else {
         setImageWarning(
-          'Image analysis requires Ollama with a vision model. Please install Ollama locally and pull a vision model (e.g., ollama pull llava-phi3).',
+          'Image analysis requires Ollama with a vision model. Please install Ollama locally and pull a vision model (e.g., ollama pull llava-phi3).'
         );
       }
     } else {
@@ -148,6 +151,7 @@ export function useChat(api: ChatApi, deps: UseChatDeps): ChatState {
         model: models.selectedModel,
         service: models.selectedService,
         agentId: agents.currentAgent?.id,
+        isPrivate,
       });
     }
 
@@ -165,7 +169,7 @@ export function useChat(api: ChatApi, deps: UseChatDeps): ChatState {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ task: userMessageContent }),
             signal: abortControllerRef.current.signal,
-          },
+          }
         );
 
         const data = (await response.json()) as TeamExecuteResult & { error?: string };
@@ -183,7 +187,11 @@ export function useChat(api: ChatApi, deps: UseChatDeps): ChatState {
           const body = data.response || 'Team did not return a response.';
           setMessages((prev) => [
             ...prev,
-            { role: 'assistant', content: `${header}\n\n${body}`, timestamp: new Date().toISOString() },
+            {
+              role: 'assistant',
+              content: `${header}\n\n${body}`,
+              timestamp: new Date().toISOString(),
+            },
           ]);
         }
 
@@ -255,6 +263,7 @@ export function useChat(api: ChatApi, deps: UseChatDeps): ChatState {
     input,
     isLoading,
     isLoadingMessages,
+    isPrivate,
     error,
     useWebSearch,
     chatMode,
@@ -265,6 +274,7 @@ export function useChat(api: ChatApi, deps: UseChatDeps): ChatState {
     setMessages,
     setInput,
     setIsLoadingMessages,
+    setIsPrivate,
     setError,
     setUseWebSearch,
     setChatMode,

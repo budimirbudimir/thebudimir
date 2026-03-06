@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { ChatApi } from './useChatApi';
 import type { Team, TeamExecuteResult } from '../types';
+import type { ChatApi } from './useChatApi';
 
 export interface TeamsState {
   teams: Team[];
@@ -33,14 +33,11 @@ export function useTeams(api: ChatApi): TeamsState {
   const saveTeam = async (teamData: Omit<Team, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       if (editingTeam) {
-        const response = await api.authFetch(
-          `${api.endpoints.teams}/${editingTeam.id}`,
-          {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(teamData),
-          },
-        );
+        const response = await api.authFetch(`${api.endpoints.teams}/${editingTeam.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(teamData),
+        });
         if (response.ok) {
           const data = (await response.json()) as { team: Team };
           setTeams((prev) => prev.map((t) => (t.id === editingTeam.id ? data.team : t)));
@@ -65,10 +62,7 @@ export function useTeams(api: ChatApi): TeamsState {
 
   const deleteTeam = async (id: string) => {
     try {
-      const response = await api.authFetch(
-        `${api.endpoints.teams}/${id}`,
-        { method: 'DELETE' },
-      );
+      const response = await api.authFetch(`${api.endpoints.teams}/${id}`, { method: 'DELETE' });
       if (response.ok) {
         setTeams((prev) => prev.filter((t) => t.id !== id));
       }
@@ -91,14 +85,11 @@ export function useTeams(api: ChatApi): TeamsState {
     setIsExecutingTeam(true);
     setTeamExecuteResult(null);
     try {
-      const response = await api.authFetch(
-        `${api.endpoints.teams}/${teamId}/execute`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ task }),
-        },
-      );
+      const response = await api.authFetch(`${api.endpoints.teams}/${teamId}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task }),
+      });
       if (response.ok) {
         const data = (await response.json()) as TeamExecuteResult;
         setTeamExecuteResult(data);

@@ -3,10 +3,8 @@
 // - https://localhost:8443 (HTTPS proxy for browser access from production sites)
 // For production browser access, run: bun run ollama-proxy
 export const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-export const OLLAMA_MODEL =
-  process.env.OLLAMA_MODEL || 'mistral-7b-instruct-v0.3-q4_k_m:custom';
-export const OLLAMA_VISION_MODEL =
-  process.env.OLLAMA_VISION_MODEL || 'llava-phi3:latest'; // Vision model for images (lighter than llava)
+export const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral-7b-instruct-v0.3-q4_k_m:custom';
+export const OLLAMA_VISION_MODEL = process.env.OLLAMA_VISION_MODEL || 'llava-phi3:latest'; // Vision model for images (lighter than llava)
 
 export interface OllamaModel {
   name: string;
@@ -26,9 +24,10 @@ export interface OllamaModel {
 /**
  * Infer model capabilities and description based on model name patterns
  */
-export function inferModelMetadata(
-  modelName: string,
-): { description: string; capabilities: string[] } {
+export function inferModelMetadata(modelName: string): {
+  description: string;
+  capabilities: string[];
+} {
   const lowerName = modelName.toLowerCase();
   const capabilities: string[] = ['text']; // All models support text
 
@@ -44,18 +43,13 @@ export function inferModelMetadata(
     capabilities.push('vision');
     capabilities.push('multimodal');
     return {
-      description:
-        'Multimodal model with vision and text understanding capabilities',
+      description: 'Multimodal model with vision and text understanding capabilities',
       capabilities,
     };
   }
 
   // Embedding models
-  if (
-    lowerName.includes('embed') ||
-    lowerName.includes('nomic') ||
-    lowerName.includes('mxbai')
-  ) {
+  if (lowerName.includes('embed') || lowerName.includes('nomic') || lowerName.includes('mxbai')) {
     return {
       description: 'Text embedding model for semantic search and similarity',
       capabilities: ['embedding'],
@@ -79,8 +73,7 @@ export function inferModelMetadata(
   ) {
     capabilities.push('tools');
     return {
-      description:
-        'Model with strong function calling and tool use capabilities',
+      description: 'Model with strong function calling and tool use capabilities',
       capabilities,
     };
   }

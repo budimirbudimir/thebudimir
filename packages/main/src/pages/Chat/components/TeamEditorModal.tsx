@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   Badge,
   Box,
@@ -12,6 +11,7 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { useEffect, useState } from 'react';
 import type { Agent, Team } from '../types';
 
 interface TeamEditorModalProps {
@@ -74,7 +74,7 @@ export default function TeamEditorModal({
   const toggleMember = (agentId: string) => {
     if (agentId === coordinatorAgentId) return;
     setMemberAgentIds((prev) =>
-      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId],
+      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId]
     );
   };
 
@@ -164,8 +164,9 @@ export default function TeamEditorModal({
                     style={{
                       cursor: 'pointer',
                       borderColor: memberAgentIds.includes(agent.id) ? '#10b981' : undefined,
-                      backgroundColor:
-                        memberAgentIds.includes(agent.id) ? 'rgba(16, 185, 129, 0.1)' : undefined,
+                      backgroundColor: memberAgentIds.includes(agent.id)
+                        ? 'rgba(16, 185, 129, 0.1)'
+                        : undefined,
                     }}
                     onClick={() => toggleMember(agent.id)}
                   >
@@ -206,7 +207,8 @@ export default function TeamEditorModal({
             fullWidth
           />
           <Text size="xs" c="dimmed" mt="xs">
-            Sequential: Coordinator delegates one task at a time. Parallel: All delegations run at once.
+            Sequential: Coordinator delegates one task at a time. Parallel: All delegations run at
+            once.
           </Text>
         </Box>
 

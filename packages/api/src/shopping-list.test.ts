@@ -33,10 +33,10 @@ beforeAll(async () => {
   // Configure test environment before importing
   process.env.PORT = '3333';
   process.env.DB_PATH = ':memory:'; // Use in-memory database for tests
-  
+
   // Import server after setting environment variables
   await import('./index');
-  
+
   // Wait for server to start
   await new Promise((resolve) => setTimeout(resolve, 200));
 });
@@ -47,7 +47,7 @@ describe('Shopping List API', () => {
   it('GET /v1/shopping-list returns empty list initially', async () => {
     const response = await fetch(baseUrl);
     expect(response.ok).toBe(true);
-    const data = await response.json() as ShoppingListResponse;
+    const data = (await response.json()) as ShoppingListResponse;
     expect(data).toHaveProperty('items');
     expect(Array.isArray(data.items)).toBe(true);
   });
@@ -66,7 +66,7 @@ describe('Shopping List API', () => {
     });
 
     expect(response.status).toBe(201);
-    const data = await response.json() as AddItemResponse;
+    const data = (await response.json()) as AddItemResponse;
     expect(data.item).toHaveProperty('id');
     expect(data.item.text).toBe('Test Item');
     expect(data.item.addedBy.userId).toBe('user_123');
@@ -102,7 +102,7 @@ describe('Shopping List API', () => {
         userName: 'Test User',
       }),
     });
-    const addData = await addResponse.json() as AddItemResponse;
+    const addData = (await addResponse.json()) as AddItemResponse;
     const itemId = addData.item.id;
 
     // Then delete it
@@ -110,13 +110,13 @@ describe('Shopping List API', () => {
       method: 'DELETE',
     });
     expect(deleteResponse.ok).toBe(true);
-    const deleteData = await deleteResponse.json() as DeleteResponse;
+    const deleteData = (await deleteResponse.json()) as DeleteResponse;
     expect(deleteData.success).toBe(true);
     expect(deleteData.deletedId).toBe(itemId);
 
     // Verify it's gone
     const getResponse = await fetch(baseUrl);
-    const getData = await getResponse.json() as ShoppingListResponse;
+    const getData = (await getResponse.json()) as ShoppingListResponse;
     const foundItem = getData.items.find((item) => item.id === itemId);
     expect(foundItem).toBeUndefined();
   });

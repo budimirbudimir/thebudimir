@@ -1,6 +1,6 @@
-import { createClient, type Client } from '@libsql/client';
-import { mkdirSync, existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { type Client, createClient } from '@libsql/client';
 
 // Create database client based on environment
 // - Production: Turso Cloud
@@ -20,13 +20,13 @@ function createDbClient(): Client {
 
   // Local development: use file-based SQLite
   const localPath = process.env.DB_PATH || './data/local.db';
-  
+
   // Ensure the directory exists
   const dir = dirname(localPath);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
-  
+
   console.log(`💾 Using local SQLite database: ${localPath}`);
   return createClient({
     url: `file:${localPath}`,
@@ -85,6 +85,7 @@ export async function initDb(): Promise<void> {
       title TEXT NOT NULL,
       model TEXT,
       service TEXT,
+      is_private INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE SET NULL
@@ -108,6 +109,13 @@ export async function initDb(): Promise<void> {
   // Migration: Add service column if it doesn't exist
   try {
     await db.execute(`ALTER TABLE conversations ADD COLUMN service TEXT`);
+  } catch {
+    // Column already exists, ignore
+  }
+
+  // Migration: Add is_private column if it doesn't exist
+  try {
+    await db.execute(`ALTER TABLE conversations ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0`);
   } catch {
     // Column already exists, ignore
   }

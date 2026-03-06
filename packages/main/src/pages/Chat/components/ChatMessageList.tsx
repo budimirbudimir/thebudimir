@@ -29,7 +29,9 @@ export default function ChatMessageList({
         {isLoadingMessages && (
           <Box ta="center" py="md">
             <Loader color="violet" size="sm" />
-            <Text size="sm" c="dimmed" mt="xs">Loading conversation...</Text>
+            <Text size="sm" c="dimmed" mt="xs">
+              Loading conversation...
+            </Text>
           </Box>
         )}
 

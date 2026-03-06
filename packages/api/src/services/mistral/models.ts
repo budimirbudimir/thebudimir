@@ -1,13 +1,12 @@
-import type { MistralModel } from './types';
 import { isConfigured } from './config';
+import type { MistralModel } from './types';
 
 // GitHub Models available models (verified via GitHub Models Marketplace)
 const AVAILABLE_MODELS: MistralModel[] = [
   {
     id: 'mistral-ai/mistral-small-2503',
     name: 'Mistral Small 3.1',
-    description:
-      'Enhanced Mistral Small 3 with multimodal capabilities and a 128k context length',
+    description: 'Enhanced Mistral Small 3 with multimodal capabilities and a 128k context length',
     capabilities: ['text', 'tools'],
   },
   {

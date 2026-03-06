@@ -4,7 +4,7 @@ import * as ollama from '../services/ollama';
 export async function handleModelsRoutes(
   req: Request,
   url: URL,
-  corsHeaders: Record<string, string>,
+  corsHeaders: Record<string, string>
 ): Promise<Response | null> {
   if (url.pathname === '/v1/models' && req.method === 'GET') {
     try {
@@ -30,13 +30,13 @@ export async function handleModelsRoutes(
             capabilities: m.capabilities,
           })),
         },
-        { headers: corsHeaders },
+        { headers: corsHeaders }
       );
     } catch (error) {
       console.error('Models fetch error:', error);
       return Response.json(
         { error: 'Failed to fetch available models' },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
   }

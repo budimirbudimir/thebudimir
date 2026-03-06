@@ -1,12 +1,4 @@
-import {
-  Badge,
-  Button,
-  Group,
-  Paper,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
+import { Badge, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
 import type { ServiceStatus } from '../StatusPage';
 
 interface ServiceCardProps {
@@ -15,11 +7,7 @@ interface ServiceCardProps {
   getStatusColor: (status: ServiceStatus['status']) => string;
 }
 
-export default function ServiceCard({
-  service,
-  onRefresh,
-  getStatusColor,
-}: ServiceCardProps) {
+export default function ServiceCard({ service, onRefresh, getStatusColor }: ServiceCardProps) {
   return (
     <Paper
       shadow="sm"
@@ -80,11 +68,7 @@ export default function ServiceCard({
         )}
 
         {service.error && (
-          <Paper
-            p="sm"
-            withBorder
-            style={{ backgroundColor: '#1a0d0d', borderColor: '#7f1d1d' }}
-          >
+          <Paper p="sm" withBorder style={{ backgroundColor: '#1a0d0d', borderColor: '#7f1d1d' }}>
             <Text size="sm" c="red.9" fw={500}>
               Error:
             </Text>
@@ -99,9 +83,7 @@ export default function ServiceCard({
             <Text size="sm" fw={500}>
               Last Checked:
             </Text>
-            <Text size="sm">
-              {new Date(service.lastChecked).toLocaleTimeString()}
-            </Text>
+            <Text size="sm">{new Date(service.lastChecked).toLocaleTimeString()}</Text>
           </Group>
         )}
 

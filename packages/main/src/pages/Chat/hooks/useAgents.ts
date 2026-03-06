@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { ChatApi } from './useChatApi';
 import type { Agent } from '../types';
+import type { ChatApi } from './useChatApi';
 
 export interface AgentsState {
   agents: Agent[];
@@ -27,14 +27,11 @@ export function useAgents(api: ChatApi): AgentsState {
   const saveAgent = async (agentData: Omit<Agent, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       if (editingAgent) {
-        const response = await api.authFetch(
-          `${api.endpoints.agents}/${editingAgent.id}`,
-          {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(agentData),
-          },
-        );
+        const response = await api.authFetch(`${api.endpoints.agents}/${editingAgent.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(agentData),
+        });
         if (response.ok) {
           const data = (await response.json()) as { agent: Agent };
           setAgents((prev) => prev.map((a) => (a.id === editingAgent.id ? data.agent : a)));
@@ -60,10 +57,7 @@ export function useAgents(api: ChatApi): AgentsState {
   const deleteAgent = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     try {
-      const response = await api.authFetch(
-        `${api.endpoints.agents}/${id}`,
-        { method: 'DELETE' },
-      );
+      const response = await api.authFetch(`${api.endpoints.agents}/${id}`, { method: 'DELETE' });
       if (response.ok) {
         setAgents((prev) => prev.filter((a) => a.id !== id));
       }

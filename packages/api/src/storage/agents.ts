@@ -112,7 +112,7 @@ export const agentsDb = {
   async updateForUser(
     id: string,
     userId: string,
-    updates: Partial<Omit<Agent, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>,
+    updates: Partial<Omit<Agent, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
   ): Promise<boolean> {
     const fields: string[] = ['updated_at = ?'];
     const args: (string | number | null)[] = [new Date().toISOString()];

@@ -1,17 +1,17 @@
+import * as Sentry from '@sentry/bun';
+import { initDb } from './db';
+import { handleAgentRoutes } from './routes/agents';
+import { handleChatRoute } from './routes/chat';
+import { handleConversationRoutes } from './routes/conversations';
+import { handleModelsRoutes } from './routes/models';
+import { handleShoppingListRoutes } from './routes/shoppingList';
+import { handleStatusRoutes } from './routes/status';
+import { handleTeamRoutes } from './routes/teams';
 import * as mistral from './services/mistral';
 import * as ollama from './services/ollama';
-import * as Sentry from "@sentry/bun";
-import { initDb } from './db';
-import { handleStatusRoutes } from './routes/status';
-import { handleModelsRoutes } from './routes/models';
-import { handleChatRoute } from './routes/chat';
-import { handleAgentRoutes } from './routes/agents';
-import { handleTeamRoutes } from './routes/teams';
-import { handleConversationRoutes } from './routes/conversations';
-import { handleShoppingListRoutes } from './routes/shoppingList';
 
 Sentry.init({
-  dsn: "https://af687efb7802278d39c8f71712f7757a@o4510818627289088.ingest.de.sentry.io/4510818639741008",
+  dsn: 'https://af687efb7802278d39c8f71712f7757a@o4510818627289088.ingest.de.sentry.io/4510818639741008',
 });
 
 const USE_LOCAL_MODEL = process.env.NODE_ENV !== 'production' && !process.env.USE_GH_MODELS;
@@ -27,19 +27,18 @@ const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL, // Production domain from env
 ].filter(Boolean);
 
-
 function getCorsHeaders(origin: string | null): Record<string, string> {
   // Normalize origins by removing trailing slashes for comparison
   const normalizedOrigin = origin?.replace(/\/$/, '');
-  const normalizedAllowed = ALLOWED_ORIGINS.map(o => o?.replace(/\/$/, ''));
+  const normalizedAllowed = ALLOWED_ORIGINS.map((o) => o?.replace(/\/$/, ''));
   const isAllowed = normalizedOrigin && normalizedAllowed.includes(normalizedOrigin);
-  
+
   if (!isAllowed && origin) {
     console.warn(`CORS: Origin not allowed: ${origin}. Allowed origins:`, ALLOWED_ORIGINS);
   }
-  
+
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin as string : '',
+    'Access-Control-Allow-Origin': isAllowed ? (origin as string) : '',
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400', // 24 hours
@@ -76,10 +75,9 @@ const server = Bun.serve({
     }
 
     // 404 for all other routes
-    Sentry.captureException(
-      new Error(`404 Not Found: ${req.method} ${req.url}`),
-      { extra: { url: req.url, method: req.method, message: 'Route not found' } },
-    );
+    Sentry.captureException(new Error(`404 Not Found: ${req.method} ${req.url}`), {
+      extra: { url: req.url, method: req.method, message: 'Route not found' },
+    });
     return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders });
   },
 });

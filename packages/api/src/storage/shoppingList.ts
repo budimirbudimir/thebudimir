@@ -28,13 +28,7 @@ export const shoppingListDb = {
   async add(item: ShoppingListItem): Promise<void> {
     await db.execute({
       sql: 'INSERT INTO shopping_list (id, text, user_id, user_name, created_at) VALUES (?, ?, ?, ?, ?)',
-      args: [
-        item.id,
-        item.text,
-        item.addedBy.userId,
-        item.addedBy.userName,
-        item.createdAt,
-      ],
+      args: [item.id, item.text, item.addedBy.userId, item.addedBy.userName, item.createdAt],
     });
   },
 

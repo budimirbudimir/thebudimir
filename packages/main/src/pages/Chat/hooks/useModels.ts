@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ChatApi } from './useChatApi';
 import type { ModelInfo, ModelsResponse } from '../types';
+import type { ChatApi } from './useChatApi';
 
 export interface ModelsState {
   availableModels: ModelsResponse;

@@ -11,7 +11,7 @@ export async function chat(request: ChatRequest & { model?: string }): Promise<C
   // GitHub Models doesn't support image inputs via their API
   if (request.imageData) {
     throw new Error(
-      'GitHub Models does not support image analysis. Please use an Ollama vision model (llava-phi3, glm-4.6v-flash, etc.) for image tasks.',
+      'GitHub Models does not support image analysis. Please use an Ollama vision model (llava-phi3, glm-4.6v-flash, etc.) for image tasks.'
     );
   }
 
@@ -53,7 +53,7 @@ export async function chat(request: ChatRequest & { model?: string }): Promise<C
     } catch (error) {
       console.error('API call error:', error);
       throw new Error(
-        `Failed to communicate with AI service: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to communicate with AI service: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
 

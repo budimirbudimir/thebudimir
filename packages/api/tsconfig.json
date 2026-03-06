@@ -1,13 +1,9 @@
 {
   "compilerOptions": {
-    "types": [
-      "@types/bun"
-    ],
+    "types": ["@types/bun"],
     "target": "ESNext",
     "module": "ESNext",
-    "lib": [
-      "ESNext"
-    ],
+    "lib": ["ESNext"],
     "moduleResolution": "bundler",
     "strict": true,
     "skipLibCheck": true,
@@ -18,10 +14,6 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }
