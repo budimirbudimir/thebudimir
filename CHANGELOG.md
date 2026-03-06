@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/budimirbudimir/thebudimir/compare/v1.19.2...v1.20.0) (2026-02-19)
+
+
+### Features
+
+* add loading state for convo and prompt stop ([#66](https://github.com/budimirbudimir/thebudimir/issues/66)) ([51bb502](https://github.com/budimirbudimir/thebudimir/commit/51bb502b129c866829605d7630633fa4bdc0fcfc))
+
 ## [1.19.2](https://github.com/budimirbudimir/thebudimir/compare/v1.19.1...v1.19.2) (2026-02-19)
 
 
