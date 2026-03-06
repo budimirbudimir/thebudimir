@@ -53,6 +53,15 @@ export async function chat(
       : REACT_SYSTEM_PROMPT;
 
     messages.push({ role: 'system', content: systemPrompt });
+
+    // Add conversation history if available
+    if (request.history && request.history.length > 0) {
+      console.log(`📜 Adding ${request.history.length} previous messages to ReAct context`);
+      for (const msg of request.history) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+    }
+
     messages.push({ role: 'user', content: request.message });
 
     console.log(`🤖 ReAct mode: Starting agentic loop (max ${maxIterations} iterations)`);
